@@ -122,6 +122,31 @@ try {
     assert.deepEqual(popups,[],viewport.name+" must not open popups");
     await page.screenshot({path:resolve("screenshots",viewport.name+".png"),fullPage:false});
 
+    // Simulate the launch overlay at each breakpoint. The hero starts BELOW the header
+    // while idle; once launching, the exact SAME iframe must cover the entire viewport.
+    await page.evaluate(() => document.body.classList.add("rocket-launching"));
+    await page.waitForFunction(() => {
+      const box = document.getElementById("rocket-warp-frame").getBoundingClientRect();
+      return Math.abs(box.top) < 1 && Math.abs(box.left) < 1 &&
+        Math.abs(box.right - innerWidth) < 1 && Math.abs(box.bottom - innerHeight) < 1;
+    }, null, { timeout: 4000 });
+    const launchCoverage = await page.evaluate(() => {
+      const frame = document.getElementById("rocket-warp-frame");
+      const rect = frame.getBoundingClientRect();
+      const canvas = frame.contentWindow.document.getElementById("cosmos-canvas");
+      return {
+        top:rect.top,left:rect.left,width:rect.width,height:rect.height,
+        viewportWidth:innerWidth,viewportHeight:innerHeight,
+        canvasWidth:canvas.width,canvasHeight:canvas.height,
+        frameStillLoaded:frame.contentWindow.__ROCKET_WARP_READY__ === true
+      };
+    });
+    assert.ok(launchCoverage.frameStillLoaded,"Fullscreen expansion must not reload the 3D scene");
+    assert.ok(Math.abs(launchCoverage.top)<1 && Math.abs(launchCoverage.height-launchCoverage.viewportHeight)<1,
+      viewport.name+" launched scene must eliminate the header-height black strip");
+    await page.screenshot({path:resolve("screenshots",viewport.name+"-fullscreen.png"),fullPage:false});
+    await page.evaluate(() => document.body.classList.remove("rocket-launching"));
+
     if(viewport.name==="desktop"){
       const search=page.locator("#project-search");
       await search.fill("引力透镜");
@@ -152,6 +177,9 @@ try {
   await warpFrame.locator("#cosmos-canvas").click({position:{x:rocketPoint.x,y:rocketPoint.y},force:true});
   await warpPage.waitForFunction(()=>document.body.classList.contains("rocket-launching"),null,{timeout:3000});
   await warpFrame.waitForFunction(()=>window.__ROCKET_WARP_STARTED__===true,null,{timeout:3000});
+  const warpBox = await warpPage.locator("#rocket-warp-frame").boundingBox();
+  assert.ok(warpBox && Math.abs(warpBox.y)<1 && Math.abs(warpBox.height-900)<1,
+    "Real 3D warp must cover the header area, not leave a black stripe at the top");
   try {
     await warpPage.waitForURL(url=>new URL(url).pathname===galaxyPath,{timeout:25000});
   } catch (err) {

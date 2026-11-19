@@ -46,3 +46,10 @@ Total scene choreography: 11.50 seconds, followed by a 0.78-second blackout/hand
 - Confirm the rocket is a real 3D mesh and the black hole is shader-rendered; do not reintroduce SVG rocket artwork or CSS accretion-disk approximations.
 - Validate desktop/mobile WebGL initialization, iframe sizing, no horizontal overflow, the actual rocket raycast, the five-stage transition, same-tab navigation and the Galaxy arrival token.
 - Preserve catalog loading, search and category filtering.
+
+## Full-screen launch coverage
+
+- While idle, the embedded 3D scene starts below the site header inside the hero, preserving normal project navigation.
+- As soon as `rocket-launching` is set, the **existing hero and iframe** switch to `position:fixed; inset:0` and cover 100% of the viewport. No new iframe or WebGL context is created.
+- The disappearing header must never leave a 94px desktop / 72px mobile black stripe during star-warp playback.
+- Desktop and mobile browser regression checks verify the frame bounding box is exactly the viewport and that WebGL remains initialized. The real warp path checks this as well.

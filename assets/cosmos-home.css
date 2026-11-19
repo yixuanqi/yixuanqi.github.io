@@ -18,6 +18,17 @@ body { background:#02040b; color:#eef3ff; }
   border:0; margin:0; padding:0; background:#02040b;
 }
 body.rocket-launching { overflow:hidden; }
+/* On launch the iframe must escape its 94px (72px mobile) hero offset.
+   Resize the existing scene in place; do NOT recreate WebGL or reload the iframe. */
+body.rocket-launching .hero {
+  position:fixed; inset:0; z-index:100;
+  width:100vw; height:100vh; height:100dvh;
+  min-height:0; margin:0; padding:0;
+  overflow:hidden;
+}
+body.rocket-launching #rocket-warp-frame {
+  position:absolute; inset:0; width:100%; height:100%;
+}
 body.rocket-launching .site-header {
   opacity:0; pointer-events:none; transition:opacity .85s cubic-bezier(.22,1,.36,1);
 }
