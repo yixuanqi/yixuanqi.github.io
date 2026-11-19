@@ -23,7 +23,11 @@ assert.match(scene, /const LENSING_BLACKHOLE_FRAG/, "scene must use the GLSL gra
 assert.match(scene, /const CAPSULE_STAR_VERT/, "scene must preserve the analytical star-stream shader");
 assert.match(scene, /const STAGE_DUR[\s\S]*?ROCKET_DIVE:\s*2\.15\s*\*\s*timeScale[\s\S]*?SINGULARITY_CHARGE:\s*0\.75\s*\*\s*timeScale[\s\S]*?BREAKTHROUGH:\s*1\.25\s*\*\s*timeScale[\s\S]*?CRUISE:\s*4\.50\s*\*\s*timeScale[\s\S]*?ARRIVE_RETURN:\s*2\.85\s*\*\s*timeScale/, "five-stage reference choreography must be retained");
 assert.match(scene, /topWindow\.location\.assign\('\/PhotoGallery\/galaxy\/'\)/, "the completed warp must navigate the top-level window in the same tab");
-assert.match(scene, /cosmos-to-galaxy-v2/, "the galaxy arrival handshake must be written");
+assert.match(scene, /cosmos-to-galaxy-v3/, "the synchronized galaxy arrival handshake v3 must be written");
+assert.match(scene, /durationMs:\s*transitionDurationMs/, "the source must transfer the shared transition duration");
+assert.match(scene, /portal:\s*\{\s*x:\s*portalX\s*\/\s*100,\s*y:\s*portalY\s*\/\s*100\s*\}/, "the source must transfer the projected 3D portal origin");
+assert.match(scene, /cosmos-portal-ring 2800ms/, "the source portal ring must use the shared 2.8-second curve");
+assert.match(scene, /state\.stage === 'HANDOFF'[\s\S]*portalMesh\.visible = true[\s\S]*rocket\.root\.visible = true/, "the final rocket and portal pose must survive beneath the handoff veil");
 assert.match(scene, /window\.__ROCKET_WARP_READY__\s*=\s*true/, "scene must expose a ready marker for browser tests");
 assert.match(scene, /window\.__ROCKET_WARP_DEBUG__/, "scene must expose the rocket raycast point for deterministic browser tests");
 assert.match(baseline, /rocket-blackhole-warp-3d-q\.html/, "the uploaded HTML must be the primary visual baseline");

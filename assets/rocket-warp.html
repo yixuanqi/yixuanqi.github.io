@@ -290,14 +290,17 @@
       letter-spacing: .34em; text-indent: .34em;
       text-shadow: 0 0 18px rgba(108,184,255,.32), 0 2px 12px rgba(0,0,0,.92);
     }
+    /* Keep this portal origin, ring curve and duration synchronized with PhotoGallery/galaxy. */
     #handoff-curtain {
+      --cosmos-portal-x: 50%;
+      --cosmos-portal-y: 75%;
       position: fixed; inset: 0; z-index: 1000; pointer-events: none;
       visibility: hidden; opacity: 0;
-      background: radial-gradient(circle at 50% 50%, #071326 0%, #02050d 48%, #000108 100%);
-      transition: opacity .72s cubic-bezier(.22,1,.36,1), visibility 0s linear .72s;
+      background: radial-gradient(circle at var(--cosmos-portal-x) var(--cosmos-portal-y), #071326 0%, #02050d 48%, #000108 100%);
     }
     #handoff-curtain::before {
-      content: ""; position: absolute; left: 50%; top: 50%;
+      content: ""; position: absolute;
+      left: var(--cosmos-portal-x); top: var(--cosmos-portal-y);
       width: 18vmin; height: 18vmin; border-radius: 50%;
       transform: translate(-50%,-50%);
       box-shadow: 0 0 0 1px rgba(208,231,255,.25), 0 0 42px rgba(91,166,229,.28);
@@ -305,13 +308,26 @@
       opacity: 0;
     }
     body.handoff-pending #handoff-curtain {
-      visibility: visible; opacity: 1; transition: opacity .72s cubic-bezier(.22,1,.36,1);
+      visibility: visible;
+      animation: cosmos-portal-cover 2800ms ease-out both;
     }
-    body.handoff-pending #handoff-curtain::before { animation: handoff-photon-ring .9s ease-out both; }
-    @keyframes handoff-photon-ring {
+    body.handoff-pending #handoff-curtain::before {
+      animation: cosmos-portal-ring 2800ms cubic-bezier(.16,.84,.32,1) both;
+    }
+    @keyframes cosmos-portal-cover {
+      0% { opacity: 0; }
+      14% { opacity: .96; }
+      100% { opacity: .98; }
+    }
+    @keyframes cosmos-portal-ring {
       0% { opacity: 0; transform: translate(-50%,-50%) scale(.25); }
-      25% { opacity: .9; }
-      100% { opacity: 0; transform: translate(-50%,-50%) scale(7); }
+      12% { opacity: .9; }
+      62% { opacity: .48; }
+      100% { opacity: 0; transform: translate(-50%,-50%) scale(12); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      body.handoff-pending #handoff-curtain,
+      body.handoff-pending #handoff-curtain::before { animation-duration: 250ms; }
     }
   </style>
 </head>
@@ -3943,20 +3959,48 @@
             state.stage = 'HANDOFF';
             state.stageTime = 0;
             state.totalTime = TOTAL_SEQ_DUR;
-            portalMesh.visible = false;
-            rocket.root.visible = false;
             elRocketCaption.classList.add('is-hidden');
+
+            // Project the actual 3D portal anchor into viewport coordinates.
+            // The rocket rests around 75% viewport height, not at screen center.
+            const portalScreen = new THREE.Vector3(anchor.x, anchor.y - 0.05, anchor.z - 0.05).project(camera);
+            const portalX = THREE.MathUtils.clamp((portalScreen.x * 0.5 + 0.5) * 100, 8, 92);
+            const portalY = THREE.MathUtils.clamp((0.5 - portalScreen.y * 0.5) * 100, 8, 92);
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const transitionDurationMs = prefersReducedMotion ? 250 : 2800;
+            const handoffStartedAt = Date.now();
+            const handoffCurtain = document.getElementById('handoff-curtain');
+            handoffCurtain.style.setProperty('--cosmos-portal-x', portalX.toFixed(2) + '%');
+            handoffCurtain.style.setProperty('--cosmos-portal-y', portalY.toFixed(2) + '%');
             document.body.classList.add('handoff-pending');
+
             try {
               const topWindow = window.top;
-              topWindow.sessionStorage.setItem('cosmos-to-galaxy-v2', JSON.stringify({
-                version: 2, origin: topWindow.location.origin, time: Date.now(),
-              }));
-              topWindow.setTimeout(() => topWindow.location.assign('/PhotoGallery/galaxy/'), testMode ? 100 : 780);
+              const payload = {
+                version: 3,
+                origin: topWindow.location.origin,
+                startedAt: handoffStartedAt,
+                durationMs: transitionDurationMs,
+                portal: { x: portalX / 100, y: portalY / 100 },
+              };
+              topWindow.sessionStorage.removeItem('cosmos-to-galaxy-v2');
+              topWindow.sessionStorage.setItem('cosmos-to-galaxy-v3', JSON.stringify(payload));
+              topWindow.setTimeout(
+                () => topWindow.location.assign('/PhotoGallery/galaxy/'),
+                testMode ? 100 : (prefersReducedMotion ? 180 : 780)
+              );
             } catch (_error) {
               window.location.assign('/PhotoGallery/galaxy/');
             }
           }
+        } else if (state.stage === 'HANDOFF') {
+          // Hold the final rocket + portal pose beneath the expanding cross-page veil.
+          portalMesh.visible = true;
+          portalUniforms.uTime.value = elapsed;
+          portalUniforms.uProgress.value = 1.0;
+          rocket.root.visible = true;
+          flamePower = 0.24;
+          flameStretch = 0.72;
         }
 
         // Update 3D Rocket Flame Uniforms & Dynamic Nozzle PointLight
