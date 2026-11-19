@@ -2504,7 +2504,7 @@
     function initApp() {
       const canvas = document.getElementById('cosmos-canvas');
       const testMode = window.__ROCKET_WARP_TEST_MODE__ === true;
-      const timeScale = testMode ? 0.12 : 1.0;
+      const timeScale = testMode ? 0.04 : 1.0;
       const qualityScale = testMode ? 0.22 : (window.innerWidth < 700 ? 0.62 : 1.0);
       let renderer;
 
@@ -3498,7 +3498,7 @@
       function animate(now) {
         rafId = requestAnimationFrame(animate);
 
-        const dt = Math.min((now - lastNow) * 0.001, 0.05);
+        const dt = testMode ? Math.min(Math.max((now - lastNow) * 0.001, 0.055), 0.25) : Math.min((now - lastNow) * 0.001, 0.05);
         lastNow = now;
         elapsed += dt;
 

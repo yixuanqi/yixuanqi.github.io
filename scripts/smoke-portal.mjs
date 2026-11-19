@@ -152,7 +152,19 @@ try {
   await warpFrame.locator("#cosmos-canvas").click({position:{x:rocketPoint.x,y:rocketPoint.y},force:true});
   await warpPage.waitForFunction(()=>document.body.classList.contains("rocket-launching"),null,{timeout:3000});
   await warpFrame.waitForFunction(()=>window.__ROCKET_WARP_STARTED__===true,null,{timeout:3000});
-  await warpPage.waitForURL(url=>new URL(url).pathname===galaxyPath,{timeout:20000});
+  try {
+    await warpPage.waitForURL(url=>new URL(url).pathname===galaxyPath,{timeout:25000});
+  } catch (err) {
+    const debug = await warpFrame.evaluate(() => ({
+      stage:window.__ROCKET_WARP_STAGE__,
+      started:window.__ROCKET_WARP_STARTED__,
+      testMode:window.__ROCKET_WARP_TEST_MODE__,
+      error:window.__ROCKET_WARP_ERROR__,
+      handoff:document.body.classList.contains('handoff-pending')
+    })).catch(e => ({frameError:String(e)}));
+    console.error("Warp-stage timeout diagnostics:",JSON.stringify(debug));
+    throw err;
+  }
   assert.equal(new URL(warpPage.url()).origin,origin,"Warp navigation stays in the same tab and origin");
   assert.equal(warpPopups.length,0,"Warp must not open a new tab");
   assert.equal(await warpPage.locator("#galaxy-test-destination").count(),1,"3D warp reaches the galaxy route");
