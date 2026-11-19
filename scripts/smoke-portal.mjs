@@ -25,11 +25,24 @@ async function waitForServer() {
 }
 
 async function waitForRocketFrame(page) {
-  await page.waitForFunction(() => {
-    const frame = document.getElementById("rocket-warp-frame");
-    return Boolean(frame?.contentWindow?.__ROCKET_WARP_READY__ || frame?.contentWindow?.__ROCKET_WARP_ERROR__);
-  }, null, { timeout: 45000 });
+  try {
+    await page.waitForFunction(() => {
+      const frame = document.getElementById("rocket-warp-frame");
+      return Boolean(frame?.contentWindow?.__ROCKET_WARP_READY__ || frame?.contentWindow?.__ROCKET_WARP_ERROR__);
+    }, null, { timeout: 24000 });
+  } catch (error) {
+    console.error("Frame-load diagnostics:", JSON.stringify(await page.evaluate(() => {
+      const frame = document.getElementById("rocket-warp-frame");
+      let child = null;
+      try {
+        child = { ready:frame?.contentWindow?.__ROCKET_WARP_READY__, error:frame?.contentWindow?.__ROCKET_WARP_ERROR__, readyState:frame?.contentWindow?.document?.readyState };
+      } catch(e) { child={accessError:String(e)}; }
+      return {iframeSrc:frame?.src, child};
+    })));
+    throw error;
+  }
   const frame = page.frame({ url: /assets\/rocket-warp\.html/ });
+  if (!frame) console.error("Rocket iframe missing; present frames:",page.frames().map(f=>f.url()));
   assert.ok(frame, "same-origin 3D rocket frame must be available");
   await frame.waitForFunction(() => window.__ROCKET_WARP_READY__ === true || Boolean(window.__ROCKET_WARP_ERROR__), null, { timeout: 45000 });
   const status = await frame.evaluate(() => ({
@@ -60,6 +73,8 @@ try {
     const errors = [];
     const popups = [];
     page.on("pageerror", error => errors.push(error.message));
+    page.on("console", msg => { if(msg.type()==="error") console.error("Browser console:",msg.text().slice(0,600)); });
+    page.on("requestfailed", req => console.error("Failed request:",req.url(),req.failure()?.errorText));
     page.on("popup", popup => popups.push(popup));
     await page.route("https://yixuanqi.github.io/PhotoGallery/projects.json**", route =>
       route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(catalog)}));

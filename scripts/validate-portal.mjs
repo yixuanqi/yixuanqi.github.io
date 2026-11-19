@@ -17,7 +17,7 @@ assert.equal((html.match(/id="rocket-warp-frame"/g) || []).length, 1, "homepage 
 assert.doesNotMatch(html, /assets\/cosmos-home\.js|id="cosmos-canvas"|blackhole-gate|rocket-ship/, "the old CSS/SVG portal implementation must not remain active in the parent page");
 assert.doesNotMatch(html, /PhotoGallery\/galaxy\/[^"]*"[^>]*target="_blank"/, "star-sea navigation must stay in the current tab");
 
-assert.match(scene, /"three":\s*"https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.160\.0\/build\/three\.module\.js"/, "reference Three.js version must be pinned");
+assert.match(scene, /"three":\s*"https:\/\/unpkg\.com\/three@0\.160\.0\/build\/three\.module\.js"/, "reference Three.js version must be pinned");
 assert.match(scene, /function buildChibiRocket3D\(/, "scene must build the procedural 3D Q rocket");
 assert.match(scene, /const LENSING_BLACKHOLE_FRAG/, "scene must use the GLSL gravitational-lensing black hole");
 assert.match(scene, /const CAPSULE_STAR_VERT/, "scene must preserve the analytical star-stream shader");
