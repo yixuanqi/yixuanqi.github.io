@@ -54,6 +54,7 @@ try {
     });
     await page.goto(origin, { waitUntil: "load" });
     await page.waitForFunction(() => document.querySelectorAll(".project-card").length === 12, null, { timeout: 20000 });
+    await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(500);
     assert.equal(await page.locator(".hero-art").count(), 0, "Old static planet illustration must be absent");
     assert.equal(await page.locator(".hero-atmosphere").count(), 1, "Cosmic atmosphere must exist");

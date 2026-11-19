@@ -11,7 +11,7 @@
   --gold-bright: #f6dca9;
   --line: rgba(220, 205, 177, .17);
   --serif: "Noto Serif SC", "Songti SC", Georgia, serif;
-  --sans: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", Inter, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 90px; }
