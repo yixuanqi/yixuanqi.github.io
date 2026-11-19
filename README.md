@@ -32,6 +32,6 @@ python -m http.server 8080
 
 ## 部署
 
-GitHub Actions 通过 GitHub Pages Artifact 部署本仓库。工作流会先检查 HTML/JS 本地资源引用，并从公开项目目录读取数据，检查字段、唯一 ID 与 HTTPS 链接。
+GitHub Pages 已采用 Git 分支发布模式：由 GitHub 内置的 `pages build and deployment` 工作流统一部署 `main`。自定义 `Validate personal project portal` 工作流只做 HTML/JS 契约检查、WebGL 桌面/移动端冒烟、火箭进入黑洞及同 Tab 跃迁验收，并保存浏览器截图。不再使用第二套 `deploy-pages`，避免并发部署冲突。
 
 固定门户地址：`https://yixuanqi.github.io/`

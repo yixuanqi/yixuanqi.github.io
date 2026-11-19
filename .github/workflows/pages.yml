@@ -1,4 +1,4 @@
-name: Deploy personal project portal
+name: Validate personal project portal
 
 on:
   push:
@@ -16,20 +16,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: github-pages
+  group: portal-validation
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Validate and deploy portal
+  validate:
+    name: Validate WebGL portal and same-tab warp
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,16 +49,3 @@ jobs:
           path: screenshots/
           if-no-files-found: ignore
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
