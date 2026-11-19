@@ -77,7 +77,9 @@ try {
   const catalogResponse = await fetch("https://yixuanqi.github.io/PhotoGallery/projects.json");
   assert.equal(catalogResponse.status, 200, "Published catalog must be reachable");
   const catalog = await catalogResponse.json();
-  assert.equal(catalog.projects.length, 12, "Baseline catalog contains 12 projects");
+  const expectedProjectCount = catalog.projects.length;
+  assert.ok(expectedProjectCount > 0, "Published catalog must contain projects");
+  assert.ok(catalog.projects.some(project => project.id === "star-courier"), "Star Courier must appear in the published catalog");
 
   await mkdir(resolve("screenshots"), { recursive: true });
   for (const viewport of [{name:"desktop",width:1440,height:900},{name:"mobile",width:390,height:844}]) {
@@ -92,7 +94,7 @@ try {
       route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(catalog)}));
     await page.goto(origin,{waitUntil:"load",timeout:45000});
     const rocketFrame = await waitForRocketFrame(page);
-    await page.waitForFunction(()=>document.querySelectorAll(".project-card").length===12,null,{timeout:20000});
+    await page.waitForFunction(count=>document.querySelectorAll(".project-card").length===count,expectedProjectCount,{timeout:20000});
     await rocketFrame.evaluate(()=>document.fonts.ready.then(()=>true));
     await page.waitForTimeout(350);
 
