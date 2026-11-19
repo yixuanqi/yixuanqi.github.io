@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#071522">
+  <meta name="theme-color" content="#02040b">
   <meta name="description" content="Yixuanqi 的个人创作宇宙。收录互动网页、三维实验、仿真作品、研究项目与独立工具。">
   <meta property="og:title" content="Yixuanqi · 创作宇宙">
   <meta property="og:description" content="把好奇心，做成可以抵达的世界。">
@@ -13,12 +13,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://unpkg.com">
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.168.0/build/three.module.js" } }
+  </script>
   <link rel="stylesheet" href="./assets/styles.css">
+  <link rel="stylesheet" href="./assets/cosmos-home.css">
   <script src="./assets/app.js" defer></script>
 </head>
 <body>
-  <canvas id="starfield" aria-hidden="true"></canvas>
-  <div class="sky-glow" aria-hidden="true"></div>
+  <canvas id="cosmos-canvas" aria-hidden="true"></canvas>
+  <div id="cosmos-vignette" aria-hidden="true"></div>
 
   <a class="skip-link" href="#projects">跳转到项目集</a>
 
@@ -40,47 +45,16 @@
       <a href="#about">关于</a>
     </nav>
 
-    <a class="header-portal" href="https://yixuanqi.github.io/PhotoGallery/galaxy/" target="_blank" rel="noopener noreferrer">
-      <span class="live-dot"></span>
-      <span>星海漫游</span>
-      <span class="external-arrow" aria-hidden="true">↗</span>
-    </a>
   </header>
 
   <main id="top">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="eyebrow-line"></span> PERSONAL PROJECT ARCHIVE <i>·</i> 2026</p>
-        <h1 id="hero-title">把好奇心，<br><em>做成可以抵达的世界。</em></h1>
-        <p class="hero-description">
-          从可交互的三维世界，到物理仿真与算法实验。<br class="desktop-break">
-          这里收录那些被认真构思、亲手实现，并持续生长的作品。
-        </p>
-        <div class="hero-actions">
-          <a class="button button-primary" href="#projects">探索作品 <span aria-hidden="true">↓</span></a>
-          <a class="text-link hero-portal-link" href="https://yixuanqi.github.io/PhotoGallery/galaxy/" target="_blank" rel="noopener noreferrer">
-            进入星海漫游 <span aria-hidden="true">↗</span>
-          </a>
-        </div>
-        <div class="hero-footnote">
-          <span class="footnote-star" aria-hidden="true">✳</span>
-          <span>持续构建 <b>·</b> 独立探索 <b>·</b> 不断生长</span>
-        </div>
-      </div>
-
-      <div class="hero-atmosphere" aria-hidden="true">
-        <span class="nebula-cloud nebula-cloud-a"></span>
-        <span class="nebula-cloud nebula-cloud-b"></span>
-        <span class="nebula-cloud nebula-cloud-c"></span>
-        <span class="cosmic-glint cosmic-glint-a">✦</span>
-        <span class="cosmic-glint cosmic-glint-b">✧</span>
-        <span class="cosmic-glint cosmic-glint-c">✦</span>
-        <span class="sky-coordinate">BETWEEN STARS &amp; IDEAS</span>
-      </div>
-
-      <div class="hero-bottom-mark">
-        <span>SCROLL TO EXPLORE</span>
-        <span class="scroll-line"></span>
+    <section class="hero" aria-label="星海漫游入口">
+      <div class="hero-portal-stage">
+        <button id="warp-trigger-btn" type="button" class="warp-pill" aria-label="星海漫游" aria-busy="false">
+          <span id="pill-dot" class="dot-breathe" aria-hidden="true"></span>
+          <span id="pill-label">星海漫游</span>
+          <span id="warp-progress-bar" aria-hidden="true"></span>
+        </button>
       </div>
     </section>
 
@@ -169,5 +143,30 @@
     <span>MADE WITH CURIOSITY <i>✳</i> 2026</span>
     <a href="https://github.com/yixuanqi/yixuanqi.github.io" target="_blank" rel="noopener noreferrer">SOURCE ↗</a>
   </footer>
+  <!-- Hidden V5 engine bindings; only the floating 星海漫游 button is visible. -->
+  <div id="cosmos-engine-controls" hidden aria-hidden="true">
+    <div id="top-left-status"></div>
+    <span id="phase-dot"></span><span id="phase-indicator"></span>
+    <div id="realm-badge-inner"><span id="realm-name-zh"></span><span id="realm-name-en"></span></div>
+    <button id="hide-ui-btn" type="button"></button>
+    <button id="restore-ui-btn" type="button"></button>
+    <button id="toggle-params-btn" type="button"></button>
+    <aside id="params-drawer" class="is-collapsed"></aside>
+    <button id="reset-params-btn" type="button"></button>
+    <button id="auto-realm-toggle" type="button" aria-checked="true"></button>
+    <span id="auto-realm-track" data-on="true"></span>
+    <button class="realm-chip active" data-realm="0" type="button"></button>
+    <button class="realm-chip" data-realm="1" type="button"></button>
+    <button class="realm-chip" data-realm="2" type="button"></button>
+    <button class="realm-chip" data-realm="3" type="button"></button>
+    <input id="slider-streak" type="range" value="1.05"><span id="val-streak">1.05</span>
+    <input id="slider-density" type="range" value="1.00"><span id="val-density">1.00</span>
+    <input id="slider-maxfov" type="range" value="110"><span id="val-maxfov">110</span>
+    <input id="slider-bgflow" type="range" value="0.24"><span id="val-bgflow">0.24</span>
+    <input id="slider-bloom" type="range" value="0.72"><span id="val-bloom">0.72</span>
+    <input id="slider-veil" type="range" value="0.14"><span id="val-veil">0.14</span>
+    <input id="slider-ripple" type="range" value="1.00"><span id="val-ripple">1.00</span>
+  </div>
+  <script type="module" src="./assets/cosmos-home.js"></script>
 </body>
 </html>
