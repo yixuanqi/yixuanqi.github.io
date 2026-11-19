@@ -49,7 +49,7 @@ Total scene choreography: 11.50 seconds, followed by a 0.78-second blackout/hand
 
 ## Full-screen launch coverage
 
-- While idle, the embedded 3D scene starts below the site header inside the hero, preserving normal project navigation.
-- As soon as `rocket-launching` is set, the **existing hero and iframe** switch to `position:fixed; inset:0` and cover 100% of the viewport. No new iframe or WebGL context is created.
+- While idle, the embedded 3D scene already begins at the top of the viewport (y=0) and fills the entire first screen. The site header is absolutely positioned above the starfield, with fully transparent background and no border. The brand and navigation remain accessible without a separate dark band.
+- As soon as `rocket-launching` is set, the **existing hero and iframe** switch to `position:fixed; inset:0`, maintaining 100% viewport coverage. No new iframe or WebGL context is created.
 - The disappearing header must never leave a 94px desktop / 72px mobile black stripe during star-warp playback.
-- Desktop and mobile browser regression checks verify the frame bounding box is exactly the viewport and that WebGL remains initialized. The real warp path checks this as well.
+- Desktop and mobile browser regression checks verify that idle and launched frames both begin at the viewport's top edge, that the transparent header overlays the idle stars, and that WebGL remains initialized. The real warp path checks full-screen coverage as well.

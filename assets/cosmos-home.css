@@ -2,14 +2,23 @@
 :root { --accent:#6cb8ff; --accent-soft:rgba(108,184,255,.44); --accent-faint:rgba(108,184,255,.15); }
 body { background:#02040b; color:#eef3ff; }
 .site-header, main, .site-footer { position:relative; z-index:2; }
-.site-header { background:linear-gradient(180deg,rgba(2,4,11,.42),rgba(2,4,11,.08)); border-bottom-color:rgba(205,224,255,.12); }
+/* The header is an overlay, never an opaque band above the starfield. */
+.site-header {
+  position:absolute;
+  left:50%; top:0; z-index:20;
+  transform:translateX(-50%);
+  margin:0;
+  background:none;
+  border:0;
+  text-shadow:0 1px 13px rgba(0,2,12,.9);
+}
 .brand-mark { color:#f0c986; }
 .main-nav a { color:rgba(220,232,244,.78); }
 .main-nav a:hover { color:#f6d89e; }
 
 .hero {
   display:block; position:relative; isolation:isolate; overflow:hidden;
-  width:100%; height:max(690px,calc(100svh - 94px)); min-height:0;
+  width:100%; height:max(690px,100svh); min-height:0;
   margin:0; padding:0; background:#02040b;
 }
 .hero::before { display:none !important; }
@@ -18,8 +27,8 @@ body { background:#02040b; color:#eef3ff; }
   border:0; margin:0; padding:0; background:#02040b;
 }
 body.rocket-launching { overflow:hidden; }
-/* On launch the iframe must escape its 94px (72px mobile) hero offset.
-   Resize the existing scene in place; do NOT recreate WebGL or reload the iframe. */
+/* The idle scene already fills the viewport from y=0; launch keeps the same
+   iframe at full-viewport size, without recreating WebGL or reloading it. */
 body.rocket-launching .hero {
   position:fixed; inset:0; z-index:100;
   width:100vw; height:100vh; height:100dvh;
@@ -37,7 +46,7 @@ body.rocket-launching .projects-section,
 body.rocket-launching .about-section,
 body.rocket-launching .site-footer { visibility:hidden; }
 @media(max-width:700px) {
-  .hero { width:100%; height:max(630px,calc(100svh - 72px)); min-height:0; margin:0; padding:0; }
+  .hero { width:100%; height:max(630px,100svh); min-height:0; margin:0; padding:0; }
 }
 @media(prefers-reduced-motion:reduce) {
   body.rocket-launching .site-header { transition-duration:.01ms; }

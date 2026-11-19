@@ -117,13 +117,29 @@ try {
     });
     assert.equal(measured.hasHorizontalOverflow,false,viewport.name+" horizontal overflow");
     assert.ok(measured.frameLeft<=1&&measured.frameRight>=viewport.width-1,viewport.name+" scene must be full bleed");
+    assert.ok(Math.abs(measured.frameTop)<1 && measured.frameBottom>=viewport.height-1,
+      viewport.name+" initial 3D scene must start at the top edge and fill behind the navigation");
+    const headerStyle=await page.locator(".site-header").evaluate(el=>{
+      const style=getComputedStyle(el);
+      const box=el.getBoundingClientRect();
+      return {
+        position:style.position,backgroundImage:style.backgroundImage,
+        backgroundColor:style.backgroundColor,borderBottom:style.borderBottomWidth,
+        top:box.top
+      };
+    });
+    assert.equal(headerStyle.position,"absolute",viewport.name+" navigation must float above the hero");
+    assert.equal(headerStyle.backgroundImage,"none",viewport.name+" dark navigation gradient must be removed");
+    assert.equal(headerStyle.backgroundColor,"rgba(0, 0, 0, 0)",viewport.name+" navigation must be transparent");
+    assert.equal(headerStyle.borderBottom,"0px",viewport.name+" navigation divider must be removed");
+    assert.ok(Math.abs(headerStyle.top)<1,viewport.name+" navigation must overlay top of the starfield");
     assert.ok(measured.canvasWidth>0&&measured.canvasHeight>0&&measured.webglContext,viewport.name+" WebGL canvas inactive");
     assert.deepEqual(errors,[],viewport.name+" uncaught browser errors");
     assert.deepEqual(popups,[],viewport.name+" must not open popups");
     await page.screenshot({path:resolve("screenshots",viewport.name+".png"),fullPage:false});
 
-    // Simulate the launch overlay at each breakpoint. The hero starts BELOW the header
-    // while idle; once launching, the exact SAME iframe must cover the entire viewport.
+    // Simulate launch at each breakpoint; the same iframe must continue to
+    // cover the whole viewport without shifting or reloading its WebGL scene.
     await page.evaluate(() => document.body.classList.add("rocket-launching"));
     await page.waitForFunction(() => {
       const box = document.getElementById("rocket-warp-frame").getBoundingClientRect();
