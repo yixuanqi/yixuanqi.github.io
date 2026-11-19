@@ -37,6 +37,18 @@ async function waitForRocketFrame(page) {
       try {
         child = { ready:frame?.contentWindow?.__ROCKET_WARP_READY__, error:frame?.contentWindow?.__ROCKET_WARP_ERROR__, readyState:frame?.contentWindow?.document?.readyState };
       } catch(e) { child={accessError:String(e)}; }
+      if(child) {
+        try {
+          const w=frame.contentWindow;
+          child.bootstrap=w.__ROCKET_INLINE_BOOTSTRAP__;
+          child.moduleEvaluated=w.__ROCKET_MODULE_EVALUATED__;
+          child.bootError=w.__ROCKET_BOOT_ERROR__;
+          child.rejection=w.__ROCKET_BOOT_REJECTION__;
+          child.documentTitle=w.document.title;
+          child.canvas={width:w.document.getElementById("cosmos-canvas")?.width,height:w.document.getElementById("cosmos-canvas")?.height};
+          child.resources=w.performance.getEntriesByType("resource").filter(r=>/three|tailwind|font/i.test(r.name)).map(r=>({name:r.name,duration:r.duration,transfer:r.transferSize}));
+        }catch(e){child.inspectionError=String(e);}
+      }
       return {iframeSrc:frame?.src, child};
     })));
     throw error;
@@ -72,7 +84,7 @@ try {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
     const errors = [];
     const popups = [];
-    page.on("pageerror", error => errors.push(error.message));
+    page.on("pageerror", error => {errors.push(error.message); console.error("Browser JS exception:",error.message);});
     page.on("console", msg => { if(msg.type()==="error") console.error("Browser console:",msg.text().slice(0,600)); });
     page.on("requestfailed", req => console.error("Failed request:",req.url(),req.failure()?.errorText));
     page.on("popup", popup => popups.push(popup));

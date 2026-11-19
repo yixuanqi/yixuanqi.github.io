@@ -558,8 +558,14 @@
   </div>
 
   <!-- Main Three.js (0.160.0) + Custom GLSL + Procedural 3D Q-Rocket & Black Hole Engine -->
+  <script>
+    window.__ROCKET_INLINE_BOOTSTRAP__ = true;
+    window.addEventListener('error', e => { window.__ROCKET_BOOT_ERROR__ = e.message || String(e.error || 'JS error'); }, true);
+    window.addEventListener('unhandledrejection', e => { window.__ROCKET_BOOT_REJECTION__ = String(e.reason || 'Promise rejected'); });
+  </script>
   <script type="module">
     import * as THREE from 'three';
+    window.__ROCKET_MODULE_EVALUATED__ = true;
 
     // ============================================================================
     // 1. FOUR CURATED STARFIELD THEMES & DEFAULT PARAMETERS
