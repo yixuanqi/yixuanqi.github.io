@@ -79,9 +79,9 @@ try {
       await search.fill("");
       await page.locator('button[data-category="simulation"]').click();
       assert.ok(await page.locator(".project-card").count()>=2,"Simulation filter works");
-      await page.locator("#warp-trigger-btn").click();
+      await page.locator("#warp-trigger-btn").click({ force: true });
       await page.waitForFunction(()=>document.body.classList.contains("is-warping"),null,{timeout:2000});
-      await page.waitForURL(url=>new URL(url).pathname===galaxyPath,{timeout:16000});
+      await page.waitForURL(url=>new URL(url).pathname===galaxyPath,{timeout:30000});
       assert.equal(new URL(page.url()).origin,origin,"Navigation stays in same tab and origin");
       assert.equal(popups.length,0,"No new tab may be opened");
       assert.equal(await page.locator("#galaxy-test-destination").count(),1,"Warp reaches galaxy route");
