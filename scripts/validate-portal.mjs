@@ -6,29 +6,35 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const html = await readFile(resolve(root, "index.html"), "utf8");
 const app = await readFile(resolve(root, "assets/app.js"), "utf8");
+const scene = await readFile(resolve(root, "assets/rocket-warp.html"), "utf8");
+const baseline = await readFile(resolve(root, "VISUAL_BASELINE.md"), "utf8");
 
-assert.match(html, /\.\/assets\/styles\.css/, "index.html must load the stylesheet");
-assert.match(html, /\.\/assets\/cosmos-home\.css/, "index.html must load the V5 cosmic visual layer");
-assert.match(html, /\.\/assets\/app\.js/, "index.html must load the application script");
-assert.match(html, /\.\/assets\/cosmos-home\.js/, "index.html must load the V5 Three.js engine");
-assert.match(html, /"three":\s*"https:\/\/unpkg\.com\/three@0\.168\.0\/build\/three\.module\.js"/, "V5 engine must pin its Three.js version");
-assert.match(html, /id="warp-trigger-btn"[\s\S]*?星海漫游/, "homepage must have one star-sea CTA");
-assert.doesNotMatch(html, /header-portal|hero-copy|hero-description|hero-footnote|hero-bottom-mark/, "homepage hero must not show promotional copy or duplicate portal buttons");
-assert.doesNotMatch(html, /href="https:\/\/yixuanqi\.github\.io\/PhotoGallery\/galaxy\/"[^>]*target="_blank"/, "star-sea destination must stay in the current tab");
-const cosmos = await readFile(resolve(root, "assets/cosmos-home.js"), "utf8");
-assert.match(cosmos, /COSMOS_BACKDROP_FRAG/, "homepage must use the V5 GLSL nebula backdrop");
-assert.match(cosmos, /CAPSULE_STAR_VERT/, "homepage must use the V5 analytical capsule star shader");
-assert.match(cosmos, /STAGE_DUR[\s\S]*?CHARGE:\s*1\.5[\s\S]*?BREAKTHROUGH:\s*1\.3[\s\S]*?CRUISE:\s*4\.6[\s\S]*?DECEL:\s*3\.1/, "V5 warp choreography must remain intact");
-assert.match(cosmos, /window\.location\.assign\('\/PhotoGallery\/galaxy\/'\)/, "warp must navigate to the galaxy route in the same tab");
-await access(resolve(root, "references/galaxy-warp-v5.html"));
-await access(resolve(root, "VISUAL_BASELINE.md"));
-assert.match(app, /https:\/\/yixuanqi\.github\.io\/PhotoGallery\/projects\.json/, "portal must consume the PhotoGallery catalog");
+assert.match(html, /\.\/assets\/styles\.css/, "index.html must load the site stylesheet");
+assert.match(html, /\.\/assets\/cosmos-home\.css/, "index.html must load the immersive hero stylesheet");
+assert.match(html, /\.\/assets\/app\.js/, "index.html must load the project catalog application");
+assert.match(html, /id="rocket-warp-frame"[\s\S]*?src="\.\/assets\/rocket-warp\.html"/, "homepage must embed the reference-based rocket scene");
+assert.equal((html.match(/id="rocket-warp-frame"/g) || []).length, 1, "homepage must have exactly one rocket scene iframe");
+assert.doesNotMatch(html, /assets\/cosmos-home\.js|id="cosmos-canvas"|blackhole-gate|rocket-ship/, "the old CSS/SVG portal implementation must not remain active in the parent page");
+assert.doesNotMatch(html, /PhotoGallery\/galaxy\/[^"]*"[^>]*target="_blank"/, "star-sea navigation must stay in the current tab");
+
+assert.match(scene, /"three":\s*"https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.160\.0\/build\/three\.module\.js"/, "reference Three.js version must be pinned");
+assert.match(scene, /function buildChibiRocket3D\(/, "scene must build the procedural 3D Q rocket");
+assert.match(scene, /const LENSING_BLACKHOLE_FRAG/, "scene must use the GLSL gravitational-lensing black hole");
+assert.match(scene, /const CAPSULE_STAR_VERT/, "scene must preserve the analytical star-stream shader");
+assert.match(scene, /const STAGE_DUR[\s\S]*?ROCKET_DIVE:\s*2\.15\s*\*\s*timeScale[\s\S]*?SINGULARITY_CHARGE:\s*0\.75\s*\*\s*timeScale[\s\S]*?BREAKTHROUGH:\s*1\.25\s*\*\s*timeScale[\s\S]*?CRUISE:\s*4\.50\s*\*\s*timeScale[\s\S]*?ARRIVE_RETURN:\s*2\.85\s*\*\s*timeScale/, "five-stage reference choreography must be retained");
+assert.match(scene, /topWindow\.location\.assign\('\/PhotoGallery\/galaxy\/'\)/, "the completed warp must navigate the top-level window in the same tab");
+assert.match(scene, /cosmos-to-galaxy-v2/, "the galaxy arrival handshake must be written");
+assert.match(scene, /window\.__ROCKET_WARP_READY__\s*=\s*true/, "scene must expose a ready marker for browser tests");
+assert.match(scene, /window\.__ROCKET_WARP_DEBUG__/, "scene must expose the rocket raycast point for deterministic browser tests");
+assert.match(baseline, /rocket-blackhole-warp-3d-q\.html/, "the uploaded HTML must be the primary visual baseline");
+await access(resolve(root, "references/rocket-blackhole-warp-3d-q.html"));
+
+assert.match(app, /https:\/\/yixuanqi\.github\.io\/PhotoGallery\/projects\.json/, "portal must consume the canonical PhotoGallery catalog");
 assert.doesNotMatch(app, /const\s+projects\s*=\s*\[/, "project records must not be duplicated in portal code");
 
 const localReferences = [...html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)].map(match => match[1]);
 for (const reference of localReferences) {
-  const filePath = resolve(root, reference.replace(/^\.\//, ""));
-  await access(filePath);
+  await access(resolve(root, reference.replace(/^\.\//, "")));
 }
 
 if (process.env.SKIP_REMOTE_CATALOG !== "1") {
@@ -56,4 +62,4 @@ if (process.env.SKIP_REMOTE_CATALOG !== "1") {
   console.log("Remote catalog check skipped by SKIP_REMOTE_CATALOG=1.");
 }
 
-console.log("Portal structure and local asset references validated.");
+console.log("Portal structure, reference-based 3D scene, and local asset references validated.");

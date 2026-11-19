@@ -2,45 +2,47 @@
 
 ## Source of truth
 
-- Original reference: `references/galaxy-warp-v5.html` (the user-provided V5 HTML).
-- Homepage renderer: `assets/cosmos-home.js`, derived from the reference.
-- Keep this document and the reference HTML as the baseline for future homepage and star-sea changes.
+- Primary reference for the homepage rocket, black hole and warp: `references/rocket-blackhole-warp-3d-q.html` (the user-provided `3d_q.html`).
+- Production scene: `assets/rocket-warp.html`, embedded by `index.html` as the same-origin `#rocket-warp-frame` iframe.
+- Keep the uploaded reference unchanged. Make production adaptations in `assets/rocket-warp.html` and update this document when the choreography or composition changes.
+- The earlier `references/galaxy-warp-v5.html` remains a historical V5 reference; it is no longer the primary source for the rocket/black-hole scene.
 
-## Homepage composition
+## Visual and rendering baseline
 
-- The hero contains one centrally floating **small rocket** with a discreet **星海漫游** label. A visually separate black hole with an event horizon, a photon ring and animated accretion disk is positioned ahead of it.
-- Remove marketing headlines, explanatory paragraphs, archive labels, secondary hero actions, duplicate portal buttons, and decorative copy from the hero.
-- The existing site brand and project/about navigation may remain in the header.
-- The CTA is the visual focus; the starfield remains visible behind it.
+- Use the reference's Three.js 0.160.0 scene and custom GLSL pipeline, not a CSS/SVG imitation.
+- The rocket is a procedural 3D Q-style model built by `buildChibiRocket3D`, with a rounded head, porthole, body, fins, animated exhaust flames, 3D puff particles and starlight sparkles.
+- The black hole is rendered by `LENSING_BLACKHOLE_FRAG`: opaque event horizon, photon ring, lensed halo arcs, rotating FBM accretion disk, Einstein-ring deflection and breakthrough/arrival ripples.
+- Preserve the velvet-dark nebula, three continuous analytical capsule-star layers, jewel-tone stars, subtle spacetime veil, dynamic camera/FOV, HDR bloom, tonemapping and selective FXAA.
+- Keep the 7-stage render pipeline and hardware MSAA detection/fallback from the reference.
+- Keep the rocket/black-hole canvas isolated in a same-origin iframe. This confines pointer raycasting and touch/hold gestures to the hero, so project cards and page scrolling remain usable.
+- Hide the reference's tuning HUD and phase badges on the portal. The only idle hero copy is the single label `星海漫游`; show the fine progress line only while the warp is active.
+- Desktop keeps the full reference star budget. Mobile reduces DPR and particle counts while retaining the same model, shaders and choreography.
 
-## Cosmic rendering baseline
+## Warp choreography and navigation
 
-- Use Three.js 0.168.0 and the original V5 GLSL shader architecture.
-- Preserve the deep velvet nebula backdrop, domain-warped FBM wisps, sapphire palette, cyan/ice highlights, champagne-gold accents, and restrained HDR bloom.
-- Preserve the three analytical capsule-star layers: deep-field, main luminous streams, and peripheral flyby threads.
-- Preserve subtle camera parallax and continuous idle star drift. Do not replace this with a static planet illustration or generic 2D particle canvas.
-- Mobile may lower pixel ratio and star count for performance while preserving the same visual character.
-
-## Warp interaction baseline
-
-The floating rocket (`#warp-trigger-btn`) is the only trigger. Clicking first launches the rocket toward the black-hole center (1.7 seconds), then the V5 four-stage warp begins. The black-hole's screen-space GLSL refraction is composited over the existing V5 stars.
+The production choreography follows the reference's five asymmetric stages:
 
 | Stage | Duration | Effect |
 |---|---:|---|
-| CHARGE | 1.5 s | Gentle brightening and FOV contraction |
-| BREAKTHROUGH | 1.3 s | Exponential acceleration, entry ripple, FOV expansion |
-| CRUISE | 4.6 s | Three-layer star streaks and translucent spacetime veil |
-| DECEL | 3.1 s | Head deceleration, tail collapse, exit ripple, FOV settle |
+| `ROCKET_DIVE` | 2.15 s | 3D rocket anticipation, ignition, curved flight and gravitational capture |
+| `SINGULARITY_CHARGE` | 0.75 s | Event-horizon pulse, lens strengthening and FOV contraction |
+| `BREAKTHROUGH` | 1.25 s | Black-hole dissolution, spacetime ripple and exponential acceleration |
+| `CRUISE` | 4.50 s | Three star layers stretch into luminous streams with a translucent spacetime veil |
+| `ARRIVE_RETURN` | 2.85 s | Star deceleration, exit ripple and 3D portal return |
 
-Production transition: **1.7 seconds of rocket approach + 10.5 seconds of V5 warp + 0.78 seconds of blackout/handoff**. The test harness may accelerate these timings.
+Total scene choreography: 11.50 seconds, followed by a 0.78-second blackout/handoff.
 
-Before same-tab navigation to `/PhotoGallery/galaxy/`, cover the full screen in black and store a one-time `sessionStorage` token (`cosmos-to-galaxy-v2`). The destination consumes the token and unveils its first rendered scene through a radial black-hole exit; direct visits must not show the arrival mask. Never use `target="_blank"`, `window.open`, or an intermediate popup for this CTA.
+- The only launch gesture is clicking/tapping the 3D rocket (Space remains an accessible keyboard shortcut).
+- At launch, fade the outer portal header. Keep the user in the same tab throughout.
+- At completion, set a one-time `sessionStorage` token `cosmos-to-galaxy-v2` with `version: 2`, the current origin and a millisecond `time`, then navigate the top-level window to `/PhotoGallery/galaxy/`.
+- The Galaxy page consumes the token and performs its existing radial black-hole exit reveal. Direct visits must not show the arrival mask.
+- Never use `target="_blank"`, `window.open`, or an intermediate popup for this CTA.
+- The smoke harness may set `window.__ROCKET_WARP_TEST_MODE__` to lower render load and scale every time-based stage threshold consistently. Production stage timings must remain unchanged.
 
 ## Regression rules
 
-- Keep visible hero copy at zero except the single CTA label.
-- Keep exactly one `#warp-trigger-btn`.
-- Do not alter V5 shaders or stage timings without updating this baseline and browser tests.
-- Validate desktop/mobile WebGL initialization, CTA visibility, horizontal overflow, catalog loading/search/filtering, and same-tab navigation.
-- CI smoke tests must enable WebGL and verify the destination without a popup.
-- The smoke harness may set `window.__COSMOS_TEST_MODE__` to reduce render load and warp durations; production timings remain unchanged.
+- Keep exactly one `#rocket-warp-frame` in the portal and one `#cosmos-canvas` inside that frame.
+- Keep exactly one visible hero label, `星海漫游`; no extra hero paragraphs, marketing copy, phase badge or settings panel.
+- Confirm the rocket is a real 3D mesh and the black hole is shader-rendered; do not reintroduce SVG rocket artwork or CSS accretion-disk approximations.
+- Validate desktop/mobile WebGL initialization, iframe sizing, no horizontal overflow, the actual rocket raycast, the five-stage transition, same-tab navigation and the Galaxy arrival token.
+- Preserve catalog loading, search and category filtering.

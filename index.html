@@ -13,21 +13,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="preconnect" href="https://unpkg.com">
-  <script type="importmap">
-    { "imports": { "three": "https://unpkg.com/three@0.168.0/build/three.module.js" } }
-  </script>
   <link rel="stylesheet" href="./assets/styles.css">
   <link rel="stylesheet" href="./assets/cosmos-home.css">
   <script src="./assets/app.js" defer></script>
 </head>
 <body>
-  <canvas id="cosmos-canvas" aria-hidden="true"></canvas>
-  <div id="cosmos-vignette" aria-hidden="true"></div>
-  <div id="launch-curtain" aria-hidden="true"></div>
-
   <a class="skip-link" href="#projects">跳转到项目集</a>
-
   <header class="site-header">
     <a class="brand" href="#top" aria-label="Yixuanqi 创作宇宙首页">
       <span class="brand-mark" aria-hidden="true">
@@ -40,82 +31,23 @@
       </span>
       <span class="brand-wordmark">YIXUANQI<small>CREATIVE UNIVERSE</small></span>
     </a>
-
     <nav class="main-nav" aria-label="主导航">
       <a href="#projects">项目集</a>
       <a href="#about">关于</a>
     </nav>
-
   </header>
 
   <main id="top">
     <section class="hero" aria-label="星海漫游入口">
-      <div class="hero-portal-stage">
-        <div id="blackhole-gate" class="blackhole-gate" aria-hidden="true">
-          <div class="blackhole-skywarp"></div>
-          <div class="blackhole-disk blackhole-disk-rear"></div>
-          <div class="blackhole-shadow"></div>
-          <div class="blackhole-disk blackhole-disk-front"></div>
-          <div class="blackhole-photon-ring"></div>
-          <div class="blackhole-satellite satellite-a"></div>
-          <div class="blackhole-satellite satellite-b"></div>
-        </div>
-        <button id="warp-trigger-btn" type="button" class="rocket-launch-control" aria-label="星海漫游" aria-busy="false" title="驾驶小火箭，穿过黑洞进入星海">
-          <span class="rocket-float" aria-hidden="true">
-            <span class="rocket-flame-outer"></span>
-            <span class="rocket-flame-inner"></span>
-            <svg class="rocket-ship" viewBox="0 0 152 214" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="rocket-hull" x1="0" y1="0" x2="1" y2="1">
-                  <stop stop-color="#fff7e7"/><stop offset=".44" stop-color="#cbddea"/>
-                  <stop offset="1" stop-color="#678ea7"/>
-                </linearGradient>
-                <linearGradient id="rocket-fin" x1="0" y1="0" x2="1" y2="1">
-                  <stop stop-color="#f5cf8c"/><stop offset="1" stop-color="#bd774f"/>
-                </linearGradient>
-                <radialGradient id="rocket-window" cx=".33" cy=".26" r=".72">
-                  <stop stop-color="#c7f4ff"/><stop offset=".43" stop-color="#4c9dcc"/>
-                  <stop offset="1" stop-color="#0a345e"/>
-                </radialGradient>
-                <linearGradient id="rocket-nose" x1="0" y1="0" x2=".8" y2="1">
-                  <stop stop-color="#f5dbaa"/><stop offset="1" stop-color="#b9825e"/>
-                </linearGradient>
-              </defs>
-              <ellipse cx="76" cy="182" rx="22" ry="12" fill="#08182e" opacity=".32"/>
-              <path d="M56 128Q28 123 22 165L53 158L66 146Z" fill="url(#rocket-fin)" stroke="#f3d8aa" stroke-width="2"/>
-              <path d="M96 128Q124 123 130 165L99 158L86 146Z" fill="url(#rocket-fin)" stroke="#f3d8aa" stroke-width="2"/>
-              <path d="M58 140Q54 160 59 178L93 178Q98 160 94 140Z" fill="#d7e3e9" stroke="#7d9aae" stroke-width="2"/>
-              <rect x="66" y="168" width="20" height="17" rx="6" fill="#b8cad3" stroke="#4e728a" stroke-width="2"/>
-              <path d="M76 16Q115 43 110 114L99 163Q76 177 53 163L42 114Q37 43 76 16Z" fill="url(#rocket-hull)" stroke="#e9f4fa" stroke-width="2"/>
-              <path d="M76 16Q94 29 104 59Q76 54 48 59Q58 29 76 16Z" fill="url(#rocket-nose)"/>
-              <path d="M46 121Q76 137 106 121" fill="none" stroke="#719ab2" stroke-width="3" opacity=".6"/>
-              <circle cx="76" cy="96" r="27" fill="#acc6d7" stroke="#f8e1b6" stroke-width="6"/>
-              <circle cx="76" cy="96" r="20" fill="url(#rocket-window)" stroke="#397093" stroke-width="3"/>
-              <ellipse cx="69" cy="87" rx="8" ry="5" transform="rotate(-28 69 87)" fill="#f2ffff" opacity=".77"/>
-              <path d="M56 142Q76 153 96 142" stroke="#e8bc81" stroke-width="4" fill="none"/>
-              <circle cx="59" cy="160" r="2" fill="#faf8e9"/><circle cx="93" cy="160" r="2" fill="#faf8e9"/>
-            </svg>
-          </span>
-          <span class="rocket-caption" id="pill-label">星海漫游</span>
-          <span id="pill-dot" hidden></span>
-          <span id="warp-progress-bar" hidden></span>
-        </button>
-      </div>
+      <iframe id="rocket-warp-frame" src="./assets/rocket-warp.html"
+        title="3D 小火箭穿越引力透镜黑洞，跃迁进入星海"
+        loading="eager" allow="fullscreen"></iframe>
     </section>
 
     <section class="stats-strip" aria-label="项目概览">
-      <div class="stat-item">
-        <strong id="total-count">—</strong>
-        <span>收录项目</span>
-      </div>
-      <div class="stat-item">
-        <strong id="web-count">—</strong>
-        <span>网页体验</span>
-      </div>
-      <div class="stat-item">
-        <strong id="category-count">—</strong>
-        <span>创作方向</span>
-      </div>
+      <div class="stat-item"><strong id="total-count">—</strong><span>收录项目</span></div>
+      <div class="stat-item"><strong id="web-count">—</strong><span>网页体验</span></div>
+      <div class="stat-item"><strong id="category-count">—</strong><span>创作方向</span></div>
       <p class="stats-caption">A collection of things made out of curiosity.</p>
     </section>
 
@@ -131,7 +63,6 @@
           <span>PROJECTS<br>IN COLLECTION</span>
         </div>
       </div>
-
       <div class="project-toolbar">
         <div class="filter-list" id="category-filters" role="group" aria-label="按项目类别筛选">
           <span class="filter-loading">正在读取项目分类…</span>
@@ -145,19 +76,13 @@
           <kbd>/</kbd>
         </label>
       </div>
-
       <div class="results-meta">
         <span id="results-label">正在连接项目目录…</span>
         <span>按项目登记顺序排列 <i>✳</i></span>
       </div>
-
       <div class="project-grid" id="project-grid" aria-live="polite" aria-busy="true">
-        <div class="loading-card">
-          <span class="loading-orbit"></span>
-          <p>正在把作品带入星图…</p>
-        </div>
+        <div class="loading-card"><span class="loading-orbit"></span><p>正在把作品带入星图…</p></div>
       </div>
-
       <div class="catalog-error" id="catalog-error" hidden>
         <span class="error-symbol">✳</span>
         <h3>暂时没有连接到项目目录</h3>
@@ -168,17 +93,13 @@
 
     <section class="about-section" id="about" aria-labelledby="about-title">
       <div class="about-orbit" aria-hidden="true">
-        <span class="about-orbit-ring"></span>
-        <span class="about-orbit-core"></span>
-        <span class="about-orbit-star">✦</span>
+        <span class="about-orbit-ring"></span><span class="about-orbit-core"></span><span class="about-orbit-star">✦</span>
       </div>
       <div class="about-copy">
         <p class="section-kicker">A NOTE FROM THE MAKER <span>02 / ABOUT</span></p>
         <h2 id="about-title">好奇心是起点，<br><em>动手才会有答案。</em></h2>
         <p>这里不是一个只展示结果的作品橱窗，也是一份持续更新的个人创造记录。三维交互、仿真、算法、桌面应用与各种不太安分的想法，都可以在这里找到自己的位置。</p>
-        <a class="about-link" href="https://github.com/yixuanqi" target="_blank" rel="noopener noreferrer">
-          在 GitHub 上继续探索 <span aria-hidden="true">↗</span>
-        </a>
+        <a class="about-link" href="https://github.com/yixuanqi" target="_blank" rel="noopener noreferrer">在 GitHub 上继续探索 <span aria-hidden="true">↗</span></a>
       </div>
     </section>
   </main>
@@ -188,30 +109,5 @@
     <span>MADE WITH CURIOSITY <i>✳</i> 2026</span>
     <a href="https://github.com/yixuanqi/yixuanqi.github.io" target="_blank" rel="noopener noreferrer">SOURCE ↗</a>
   </footer>
-  <!-- Hidden V5 engine bindings; only the floating 星海漫游 button is visible. -->
-  <div id="cosmos-engine-controls" hidden aria-hidden="true">
-    <div id="top-left-status"></div>
-    <span id="phase-dot"></span><span id="phase-indicator"></span>
-    <div id="realm-badge-inner"><span id="realm-name-zh"></span><span id="realm-name-en"></span></div>
-    <button id="hide-ui-btn" type="button"></button>
-    <button id="restore-ui-btn" type="button"></button>
-    <button id="toggle-params-btn" type="button"></button>
-    <aside id="params-drawer" class="is-collapsed"></aside>
-    <button id="reset-params-btn" type="button"></button>
-    <button id="auto-realm-toggle" type="button" aria-checked="true"></button>
-    <span id="auto-realm-track" data-on="true"></span>
-    <button class="realm-chip active" data-realm="0" type="button"></button>
-    <button class="realm-chip" data-realm="1" type="button"></button>
-    <button class="realm-chip" data-realm="2" type="button"></button>
-    <button class="realm-chip" data-realm="3" type="button"></button>
-    <input id="slider-streak" type="range" value="1.05"><span id="val-streak">1.05</span>
-    <input id="slider-density" type="range" value="1.00"><span id="val-density">1.00</span>
-    <input id="slider-maxfov" type="range" value="110"><span id="val-maxfov">110</span>
-    <input id="slider-bgflow" type="range" value="0.24"><span id="val-bgflow">0.24</span>
-    <input id="slider-bloom" type="range" value="0.72"><span id="val-bloom">0.72</span>
-    <input id="slider-veil" type="range" value="0.14"><span id="val-veil">0.14</span>
-    <input id="slider-ripple" type="range" value="1.00"><span id="val-ripple">1.00</span>
-  </div>
-  <script type="module" src="./assets/cosmos-home.js"></script>
 </body>
 </html>

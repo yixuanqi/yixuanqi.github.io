@@ -1,0 +1,4201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Yixuanqi · 3D 火箭黑洞跃迁</title>
+
+  <!-- Tailwind CSS for minimalist glassmorphic interface -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Refined Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
+
+  <!-- Three.js 0.160.0 ES Module Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --accent: #6cb8ff;
+      --accent-soft: rgba(108, 184, 255, 0.44);
+      --accent-faint: rgba(108, 184, 255, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #02040b;
+      color: #eef3ff;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .font-serif-poetic {
+      font-family: 'Noto Serif SC', 'Songti SC', 'STSong', Georgia, serif;
+    }
+
+    .font-mono-fine {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Full-Viewport WebGL Canvas */
+    #cosmos-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      touch-action: none;
+      cursor: default;
+      z-index: 1;
+    }
+
+    #cosmos-canvas.rocket-hover {
+      cursor: pointer;
+    }
+
+    /* Frosted Dark Glass Surface */
+    .glass-surface {
+      background: linear-gradient(155deg, rgba(8, 13, 28, 0.56), rgba(3, 5, 14, 0.78));
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      border: 1px solid rgba(205, 224, 255, 0.12);
+      box-shadow:
+        0 14px 42px rgba(0, 0, 0, 0.56),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    /* Top-left Header Auto-Dim During Warp */
+    #top-left-status {
+      transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #top-left-status.is-dimmed {
+      opacity: 0.56;
+    }
+
+    #top-left-status.is-dimmed:hover {
+      opacity: 0.98;
+    }
+
+    /* Star Realm Name Crossfade */
+    #realm-badge-inner {
+      transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #realm-badge-inner.is-switching {
+      opacity: 0.20;
+      transform: translateY(-2px);
+    }
+
+    /* Bottom Subtle Caption & Hover Illumination */
+    #rocket-caption {
+      transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+                  color 0.35s ease,
+                  text-shadow 0.35s ease;
+    }
+
+    #rocket-caption.is-illuminated #caption-main {
+      color: #ffffff;
+      text-shadow: 0 0 18px var(--accent-soft), 0 2px 10px rgba(0, 0, 0, 0.9);
+    }
+
+    #rocket-caption.is-hidden {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    /* Whisper-Thin Hairline Progress Bar During Warp */
+    #warp-progress-wrap {
+      width: 148px;
+      height: 1.5px;
+      background: rgba(205, 224, 255, 0.12);
+      border-radius: 999px;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.45s ease;
+    }
+
+    #warp-progress-wrap.is-visible {
+      opacity: 1;
+    }
+
+    #warp-progress-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent 0%, var(--accent) 45%, #fffbf2 100%);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    /* Collapsible Visual Tuning Drawer */
+    #params-drawer {
+      transform-origin: top right;
+      transition:
+        opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.30s cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0.30s;
+    }
+
+    #params-drawer.is-collapsed {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.97);
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* Star Realm Selector Chips */
+    .realm-chip {
+      border: 1px solid rgba(205, 224, 255, 0.11);
+      background: rgba(255, 255, 255, 0.025);
+      transition: all 0.25s ease;
+    }
+
+    .realm-chip:hover {
+      background: rgba(255, 255, 255, 0.075);
+      border-color: rgba(205, 224, 255, 0.28);
+    }
+
+    .realm-chip.active {
+      background: rgba(255, 255, 255, 0.11);
+      border-color: var(--accent-soft);
+      box-shadow: 0 0 16px var(--accent-faint);
+    }
+
+    /* Minimalist Hairline Range Sliders */
+    input[type='range'].cosmos-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 2px;
+      border-radius: 999px;
+      background: rgba(205, 224, 255, 0.18);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type='range'].cosmos-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #f5f9ff;
+      border: 1.5px solid var(--accent);
+      box-shadow: 0 0 10px var(--accent-soft);
+      transition: transform 0.16s ease, box-shadow 0.2s ease;
+    }
+
+    input[type='range'].cosmos-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.22);
+      box-shadow: 0 0 14px var(--accent);
+    }
+
+    input[type='range'].cosmos-slider::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #f5f9ff;
+      border: 1.5px solid var(--accent);
+      box-shadow: 0 0 10px var(--accent-soft);
+      transition: transform 0.16s ease;
+    }
+
+    /* Clean Toggle Switch */
+    .toggle-track {
+      width: 34px;
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(210, 228, 255, 0.16);
+      position: relative;
+      transition: background 0.25s ease, border-color 0.25s ease;
+    }
+
+    .toggle-track[data-on="true"] {
+      background: var(--accent-faint);
+      border-color: var(--accent-soft);
+    }
+
+    .toggle-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(225, 236, 255, 0.72);
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), background 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .toggle-track[data-on="true"] .toggle-thumb {
+      transform: translateX(16px);
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* Cinema Mode (H Key / Eye Toggle) */
+    #hud-root {
+      transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    body.ui-hidden #hud-root {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.ui-hidden #hud-root * {
+      pointer-events: none !important;
+    }
+
+    #restore-ui-btn {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    body.ui-hidden #restore-ui-btn {
+      pointer-events: auto;
+      opacity: 0.24;
+    }
+
+    body.ui-hidden #restore-ui-btn:hover { opacity: 0.94; }
+
+    /* Portal integration: retain the reference renderer, hide its tuning HUD. */
+    #hud-root > div:first-child, #restore-ui-btn { display: none !important; }
+    #rocket-caption > span:nth-child(2) { display: none !important; }
+    #rocket-caption { padding-bottom: clamp(18px, 3vh, 34px); pointer-events: none; }
+    #caption-main {
+      color: rgba(232,241,255,.92); font-size: clamp(14px,1.15vw,18px);
+      letter-spacing: .34em; text-indent: .34em;
+      text-shadow: 0 0 18px rgba(108,184,255,.32), 0 2px 12px rgba(0,0,0,.92);
+    }
+    #handoff-curtain {
+      position: fixed; inset: 0; z-index: 1000; pointer-events: none;
+      visibility: hidden; opacity: 0;
+      background: radial-gradient(circle at 50% 50%, #071326 0%, #02050d 48%, #000108 100%);
+      transition: opacity .72s cubic-bezier(.22,1,.36,1), visibility 0s linear .72s;
+    }
+    #handoff-curtain::before {
+      content: ""; position: absolute; left: 50%; top: 50%;
+      width: 18vmin; height: 18vmin; border-radius: 50%;
+      transform: translate(-50%,-50%);
+      box-shadow: 0 0 0 1px rgba(208,231,255,.25), 0 0 42px rgba(91,166,229,.28);
+      background: radial-gradient(circle,#000 46%,#0b2036 62%,rgba(112,184,238,.34) 68%,transparent 74%);
+      opacity: 0;
+    }
+    body.handoff-pending #handoff-curtain {
+      visibility: visible; opacity: 1; transition: opacity .72s cubic-bezier(.22,1,.36,1);
+    }
+    body.handoff-pending #handoff-curtain::before { animation: handoff-photon-ring .9s ease-out both; }
+    @keyframes handoff-photon-ring {
+      0% { opacity: 0; transform: translate(-50%,-50%) scale(.25); }
+      25% { opacity: .9; }
+      100% { opacity: 0; transform: translate(-50%,-50%) scale(7); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Full-Viewport Three.js WebGL Cosmos & 3D Rocket Canvas -->
+  <canvas id="cosmos-canvas" aria-label="3D Q版小火箭黑洞静谧跃迁实时渲染画布"></canvas>
+  <div id="handoff-curtain" aria-hidden="true"></div>
+
+  <!-- WebGL Error Fallback Box -->
+  <div id="error-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-[#02040b]/95 p-6">
+    <div class="glass-surface max-w-md w-full rounded-2xl p-6 text-center space-y-3">
+      <div class="text-[10px] font-mono-fine tracking-[0.28em] text-sky-200/75 uppercase">WebGL Initialization Error</div>
+      <h2 class="text-base font-serif-poetic tracking-widest text-white">无法启动三维星空渲染管线</h2>
+      <p id="error-message" class="text-xs text-slate-300/80 leading-relaxed">
+        当前浏览器或设备暂不支持所需的 WebGL 渲染特性，请确认已开启硬件加速或使用新版现代浏览器。
+      </p>
+    </div>
+  </div>
+
+  <!-- Discreet Restore Button (Only Active when HUD is Hidden) -->
+  <button
+    id="restore-ui-btn"
+    type="button"
+    title="显示界面 (H)"
+    aria-label="显示界面"
+    class="glass-surface fixed top-5 right-5 z-30 rounded-full p-2.5 text-slate-200 cursor-pointer"
+  >
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
+      <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+  </button>
+
+  <!-- Clean Minimal Chinese HUD -->
+  <div id="hud-root" class="fixed inset-0 z-20 pointer-events-none flex flex-col justify-between p-4 sm:p-7">
+
+    <!-- Top Row: Left Refined Star Region & Phase Pill | Right Controls -->
+    <div class="flex items-start justify-between gap-3">
+
+      <!-- Top-Left: Subtle Glass Pill with Current Starfield Region & Phase Status -->
+      <div id="top-left-status" class="pointer-events-auto select-none">
+        <div class="glass-surface rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-2.5 space-y-1">
+          <div class="flex items-center gap-2.5">
+            <span id="phase-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-sky-300 shadow-[0_0_8px_#6cb8ff]"></span>
+            <div id="realm-badge-inner" class="flex items-baseline gap-2">
+              <span id="realm-name-zh" class="font-serif-poetic text-xs sm:text-[13px] font-normal tracking-[0.20em] text-slate-100/95">
+                苍穹蓝海
+              </span>
+              <span id="realm-name-en" class="text-[9px] font-mono-fine tracking-[0.20em] text-slate-400/65 uppercase hidden sm:inline">
+                SAPPHIRE ABYSS
+              </span>
+            </div>
+            <span class="h-3 w-px bg-slate-200/15"></span>
+            <span id="phase-indicator" class="text-[11px] font-light tracking-[0.14em] text-slate-300/85">
+              静谧星海
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top-Right: Hide/Show Eye Button (H) + Visual Parameter Drawer Toggle -->
+      <div class="relative flex flex-col items-end pointer-events-auto">
+        <div class="flex items-center gap-2">
+          <button
+            id="hide-ui-btn"
+            type="button"
+            title="隐藏界面 (H)"
+            aria-label="隐藏界面"
+            class="glass-surface rounded-full p-2.5 text-slate-300/80 hover:text-white hover:border-slate-200/30 transition-all cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+              <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+              <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+              <line x1="2" y1="2" x2="22" y2="22"></line>
+            </svg>
+          </button>
+
+          <button
+            id="toggle-params-btn"
+            type="button"
+            aria-expanded="false"
+            aria-controls="params-drawer"
+            class="glass-surface rounded-full px-3.5 py-2 flex items-center gap-2 text-xs text-slate-200/90 hover:text-white hover:border-slate-200/30 transition-all cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="7" x2="20" y2="7"></line>
+              <circle cx="9" cy="7" r="1.8"></circle>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <circle cx="15" cy="12" r="1.8"></circle>
+              <line x1="4" y1="17" x2="20" y2="17"></line>
+              <circle cx="10" cy="17" r="1.8"></circle>
+            </svg>
+            <span class="tracking-[0.14em] font-light">视觉微调</span>
+          </button>
+        </div>
+
+        <!-- Collapsible Frosted-Glass Parameter Drawer -->
+        <aside
+          id="params-drawer"
+          class="is-collapsed glass-surface mt-2.5 w-[288px] sm:w-[314px] rounded-2xl p-4 sm:p-5 space-y-4 max-h-[78vh] overflow-y-auto"
+        >
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs font-serif-poetic tracking-[0.2em] text-slate-100">视觉微调 · 3D 跃迁</div>
+              <div class="text-[9px] font-mono-fine tracking-[0.20em] text-slate-400/75 uppercase mt-0.5">3D Rocket &amp; Optics</div>
+            </div>
+            <button
+              id="reset-params-btn"
+              type="button"
+              class="text-[10px] tracking-wider text-slate-300/75 hover:text-white px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] transition-colors cursor-pointer"
+            >
+              重置
+            </button>
+          </div>
+
+          <!-- 4 Curated Starfield Regions -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-[11px] text-slate-300/85">
+              <span class="tracking-wider">星域主题</span>
+              <span class="text-[9px] font-mono-fine tracking-widest text-slate-400/65 uppercase">Star Realm</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button type="button" data-realm="0" class="realm-chip active rounded-xl py-2 px-2.5 flex items-center gap-2 cursor-pointer">
+                <span class="w-3 h-3 rounded-full shrink-0 bg-gradient-to-tr from-[#071d54] via-[#4ea8ff] to-[#ffe6b3] shadow-[0_0_8px_rgba(78,168,255,0.55)]"></span>
+                <span class="text-[11px] text-slate-100/95 tracking-wider">苍穹蓝海</span>
+              </button>
+              <button type="button" data-realm="1" class="realm-chip rounded-xl py-2 px-2.5 flex items-center gap-2 cursor-pointer">
+                <span class="w-3 h-3 rounded-full shrink-0 bg-gradient-to-tr from-[#24112e] via-[#f2a8bd] to-[#ffd28a] shadow-[0_0_8px_rgba(255,210,138,0.55)]"></span>
+                <span class="text-[11px] text-slate-100/95 tracking-wider">暮色琥珀</span>
+              </button>
+              <button type="button" data-realm="2" class="realm-chip rounded-xl py-2 px-2.5 flex items-center gap-2 cursor-pointer">
+                <span class="w-3 h-3 rounded-full shrink-0 bg-gradient-to-tr from-[#130b38] via-[#ab7dff] to-[#91dbff] shadow-[0_0_8px_rgba(171,125,255,0.55)]"></span>
+                <span class="text-[11px] text-slate-100/95 tracking-wider">紫微星河</span>
+              </button>
+              <button type="button" data-realm="3" class="realm-chip rounded-xl py-2 px-2.5 flex items-center gap-2 cursor-pointer">
+                <span class="w-3 h-3 rounded-full shrink-0 bg-gradient-to-tr from-[#052930] via-[#4ae8c2] to-[#87ceff] shadow-[0_0_8px_rgba(74,232,194,0.55)]"></span>
+                <span class="text-[11px] text-slate-100/95 tracking-wider">极光寒穹</span>
+              </button>
+            </div>
+
+            <!-- Auto-Switch Realm Toggle -->
+            <button
+              id="auto-realm-toggle"
+              type="button"
+              role="switch"
+              aria-checked="true"
+              class="w-full pt-1.5 flex items-center justify-between text-[11px] text-slate-300/85 hover:text-white transition-colors cursor-pointer"
+            >
+              <span class="tracking-wide">每次跃迁自动切换星域</span>
+              <span id="auto-realm-track" class="toggle-track" data-on="true">
+                <span class="toggle-thumb"></span>
+              </span>
+            </button>
+          </div>
+
+          <div class="h-px bg-white/[0.08]"></div>
+
+          <!-- 8 Optical & Motion Sliders -->
+          <div class="space-y-3 text-[11px]">
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-200/90 tracking-wide">光丝长度</span>
+                <span id="val-streak" class="font-mono-fine text-[10px] text-slate-300/85">1.05</span>
+              </div>
+              <input id="slider-streak" type="range" min="0.45" max="1.90" step="0.05" value="1.05" class="cosmos-slider" />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-200/90 tracking-wide">背景星流速</span>
+                <span id="val-bgflow" class="font-mono-fine text-[10px] text-slate-300/85">0.24x</span>
+              </div>
+              <input id="slider-bgflow" type="range" min="0.08" max="0.55" step="0.02" value="0.24" class="cosmos-slider" />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-200/90 tracking-wide">星流密度</span>
+                <span id="val-density" class="font-mono-fine text-[10px] text-slate-300/85">1.00</span>
+              </div>
+              <input id="slider-density" type="range" min="0.35" max="1.00" step="0.05" value="1.00" class="cosmos-slider" />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-200/90 tracking-wide">跃迁广角</span>
+                <span id="val-maxfov" class="font-mono-fine text-[10px] text-slate-300/85">110°</span>
+              </div>
+              <input id="slider-maxfov" type="range" min="85" max="122" step="1" value="110" class="cosmos-slider" />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-200/90 tracking-wide">柔焦星晕</span>
+                <span id="val-bloom" class="font-mono-fine text-[10px] text-slate-300/85">0.72</span>
+              </div>
+              <input id="slider-bloom" type="range" min="0.00" max="1.50" step="0.02" value="0.72" class="cosmos-slider" />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-200/90 tracking-wide">时空薄纱</span>
+                <span id="val-veil" class="font-mono-fine text-[10px] text-slate-300/85">0.14</span>
+              </div>
+              <input id="slider-veil" type="range" min="0.00" max="0.35" step="0.01" value="0.14" class="cosmos-slider" />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-200/90 tracking-wide">引力波纹</span>
+                <span id="val-ripple" class="font-mono-fine text-[10px] text-slate-300/85">1.00</span>
+              </div>
+              <input id="slider-ripple" type="range" min="0.00" max="1.80" step="0.05" value="1.00" class="cosmos-slider" />
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-200/90 tracking-wide">边缘色散</span>
+                <span id="val-chromatic" class="font-mono-fine text-[10px] text-slate-300/85">0.42</span>
+              </div>
+              <input id="slider-chromatic" type="range" min="0.00" max="1.50" step="0.05" value="0.42" class="cosmos-slider" />
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- Bottom-Center: Ultra-Clean Prompt Directly Beneath 3D Rocket + Hairline Warp Progress -->
+    <div class="flex flex-col items-center gap-2 pb-1 sm:pb-2">
+      <div id="warp-progress-wrap" aria-hidden="true">
+        <div id="warp-progress-bar"></div>
+      </div>
+
+      <div id="rocket-caption" class="flex flex-col items-center gap-1 text-center">
+        <span id="caption-main" class="font-serif-poetic text-xs sm:text-[13px] tracking-[0.26em] text-slate-200/85 drop-shadow-[0_2px_10px_rgba(0,0,0,0.92)]">
+          星海漫游
+        </span>
+        <span class="text-[10px] font-light tracking-[0.14em] text-slate-300/45 drop-shadow-[0_1px_6px_rgba(0,0,0,0.88)]">
+          空格起飞 · 空白处长按或巡航按住延长 · H 隐藏界面
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Three.js (0.160.0) + Custom GLSL + Procedural 3D Q-Rocket & Black Hole Engine -->
+  <script type="module">
+    import * as THREE from 'three';
+
+    // ============================================================================
+    // 1. FOUR CURATED STARFIELD THEMES & DEFAULT PARAMETERS
+    // ============================================================================
+    const REALMS = [
+      {
+        zh: '苍穹蓝海',
+        en: 'SAPPHIRE ABYSS',
+        cssAccent: '#6cb8ff',
+        cssSoft: 'rgba(108, 184, 255, 0.44)',
+        cssFaint: 'rgba(108, 184, 255, 0.15)',
+        rimLight: new THREE.Color('#78B8FF'),
+        skyDeep: new THREE.Color('#02040b'),
+        skyMid: new THREE.Color('#051029'),
+        nebulaA: new THREE.Color('#0d2660'),
+        nebulaB: new THREE.Color('#1a174d'),
+        veilA: new THREE.Color('#1848a8'),
+        veilB: new THREE.Color('#47b5ff'),
+        vpGlow: new THREE.Color('#0d2864'),
+        bhDiskInner: new THREE.Color('#ffe7bc'),
+        bhDiskOuter: new THREE.Color('#4aa8ff'),
+        star0: new THREE.Color('#4496ff'),
+        star1: new THREE.Color('#6de2ff'),
+        star2: new THREE.Color('#808cff'),
+        star3: new THREE.Color('#ffd085'),
+        headTint: new THREE.Color('#f4f9ff'),
+      },
+      {
+        zh: '暮色琥珀',
+        en: 'AMBER DUSK',
+        cssAccent: '#f5c282',
+        cssSoft: 'rgba(245, 194, 130, 0.44)',
+        cssFaint: 'rgba(245, 194, 130, 0.15)',
+        rimLight: new THREE.Color('#FFC68A'),
+        skyDeep: new THREE.Color('#04030b'),
+        skyMid: new THREE.Color('#130b22'),
+        nebulaA: new THREE.Color('#2c1742'),
+        nebulaB: new THREE.Color('#47212c'),
+        veilA: new THREE.Color('#5a306e'),
+        veilB: new THREE.Color('#e8a264'),
+        vpGlow: new THREE.Color('#281642'),
+        bhDiskInner: new THREE.Color('#fff0cf'),
+        bhDiskOuter: new THREE.Color('#f29c68'),
+        star0: new THREE.Color('#ffc170'),
+        star1: new THREE.Color('#f596b0'),
+        star2: new THREE.Color('#9ca8ff'),
+        star3: new THREE.Color('#ffe2b0'),
+        headTint: new THREE.Color('#fff8ef'),
+      },
+      {
+        zh: '紫微星河',
+        en: 'INDIGO VIOLET',
+        cssAccent: '#bb91ff',
+        cssSoft: 'rgba(187, 145, 255, 0.44)',
+        cssFaint: 'rgba(187, 145, 255, 0.15)',
+        rimLight: new THREE.Color('#B590FF'),
+        skyDeep: new THREE.Color('#03020d'),
+        skyMid: new THREE.Color('#0c092a'),
+        nebulaA: new THREE.Color('#24145c'),
+        nebulaB: new THREE.Color('#3b155e'),
+        veilA: new THREE.Color('#4c30b5'),
+        veilB: new THREE.Color('#b082ff'),
+        vpGlow: new THREE.Color('#22135a'),
+        bhDiskInner: new THREE.Color('#fae8ff'),
+        bhDiskOuter: new THREE.Color('#9c70ff'),
+        star0: new THREE.Color('#a870ff'),
+        star1: new THREE.Color('#d6b0ff'),
+        star2: new THREE.Color('#75c8ff'),
+        star3: new THREE.Color('#f7bdd8'),
+        headTint: new THREE.Color('#f7f4ff'),
+      },
+      {
+        zh: '极光寒穹',
+        en: 'AURORA BOREALIS',
+        cssAccent: '#63ebd0',
+        cssSoft: 'rgba(99, 235, 208, 0.44)',
+        cssFaint: 'rgba(99, 235, 208, 0.15)',
+        rimLight: new THREE.Color('#70F2D8'),
+        skyDeep: new THREE.Color('#01060b'),
+        skyMid: new THREE.Color('#041b24'),
+        nebulaA: new THREE.Color('#083842'),
+        nebulaB: new THREE.Color('#0f234a'),
+        veilA: new THREE.Color('#106975'),
+        veilB: new THREE.Color('#47e8c2'),
+        vpGlow: new THREE.Color('#093444'),
+        bhDiskInner: new THREE.Color('#e6fff8'),
+        bhDiskOuter: new THREE.Color('#3de0be'),
+        star0: new THREE.Color('#40e8bf'),
+        star1: new THREE.Color('#63caff'),
+        star2: new THREE.Color('#96f7e0'),
+        star3: new THREE.Color('#ffe2a6'),
+        headTint: new THREE.Color('#f2feff'),
+      },
+    ];
+
+    const DEFAULTS = {
+      realmIndex: 0,
+      autoSwitchRealm: true,
+      streakLength: 1.05,
+      bgStarSpeed: 0.24,
+      streamDensity: 1.00,
+      maxFov: 110,
+      bloomGlow: 0.72,
+      spacetimeVeil: 0.14,
+      rippleStrength: 1.00,
+      chromatic: 0.42,
+    };
+
+    const params = { ...DEFAULTS };
+
+    // Smoothly interpolated live palette uniforms shared across all scenes & shaders
+    const liveColors = {
+      rimLight: REALMS[0].rimLight.clone(),
+      skyDeep: REALMS[0].skyDeep.clone(),
+      skyMid: REALMS[0].skyMid.clone(),
+      nebulaA: REALMS[0].nebulaA.clone(),
+      nebulaB: REALMS[0].nebulaB.clone(),
+      veilA: REALMS[0].veilA.clone(),
+      veilB: REALMS[0].veilB.clone(),
+      vpGlow: REALMS[0].vpGlow.clone(),
+      bhDiskInner: REALMS[0].bhDiskInner.clone(),
+      bhDiskOuter: REALMS[0].bhDiskOuter.clone(),
+      star0: REALMS[0].star0.clone(),
+      star1: REALMS[0].star1.clone(),
+      star2: REALMS[0].star2.clone(),
+      star3: REALMS[0].star3.clone(),
+      headTint: REALMS[0].headTint.clone(),
+    };
+
+    // ============================================================================
+    // 2. GLSL SHADERS (VERIFIED, ZERO NaN, ZERO ALIASING, PURE HDR PIPELINE)
+    // ============================================================================
+
+    const FULLSCREEN_VERT = /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = vec4(position.xy, 0.0, 1.0);
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2A. Deep Velvet Nebula Dome + Translucent Gossamer Spacetime Veil
+    // ----------------------------------------------------------------------------
+    const COSMOS_BACKDROP_FRAG = /* glsl */ `
+      precision highp float;
+
+      uniform float uTime;
+      uniform float uDrift;
+      uniform float uFlow;
+      uniform float uWarp;
+      uniform float uVeilOpacity;
+      uniform float uAspect;
+      uniform float uTanHalfFov;
+      uniform vec2  uVanishingOffset;
+      uniform vec3  uCamRight;
+      uniform vec3  uCamUp;
+      uniform vec3  uCamForward;
+
+      uniform vec3  uSkyDeep;
+      uniform vec3  uSkyMid;
+      uniform vec3  uNebulaA;
+      uniform vec3  uNebulaB;
+      uniform vec3  uVeilA;
+      uniform vec3  uVeilB;
+      uniform vec3  uVpGlow;
+
+      varying vec2 vUv;
+
+      // Ashima 3D Simplex Noise
+      vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
+      vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+      float snoise(vec3 v) {
+        const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+        const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+        vec3 i  = floor(v + dot(v, C.yyy));
+        vec3 x0 = v - i + dot(i, C.xxx);
+
+        vec3 g = step(x0.yzx, x0.xyz);
+        vec3 l = 1.0 - g;
+        vec3 i1 = min(g.xyz, l.zxy);
+        vec3 i2 = max(g.xyz, l.zxy);
+
+        vec3 x1 = x0 - i1 + C.xxx;
+        vec3 x2 = x0 - i2 + C.yyy;
+        vec3 x3 = x0 - D.yyy;
+
+        i = mod(i, 289.0);
+        vec4 p = permute(permute(permute(
+                  i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+
+        float n_ = 1.0 / 7.0;
+        vec3 ns = n_ * D.wyz - D.xzx;
+        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+
+        vec4 x_ = floor(j * ns.z);
+        vec4 y_ = floor(j - 7.0 * x_);
+
+        vec4 x = x_ * ns.x + ns.yyyy;
+        vec4 y = y_ * ns.x + ns.yyyy;
+        vec4 h = 1.0 - abs(x) - abs(y);
+
+        vec4 b0 = vec4(x.xy, y.xy);
+        vec4 b1 = vec4(x.zw, y.zw);
+
+        vec4 s0 = floor(b0) * 2.0 + 1.0;
+        vec4 s1 = floor(b1) * 2.0 + 1.0;
+        vec4 sh = -step(h, vec4(0.0));
+
+        vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+        vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+        vec3 p0 = vec3(a0.xy, h.x);
+        vec3 p1 = vec3(a0.zw, h.y);
+        vec3 p2 = vec3(a1.xy, h.z);
+        vec3 p3 = vec3(a1.zw, h.w);
+
+        vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+        p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+
+        vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+        m = m * m;
+        return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+      }
+
+      float fbm4(vec3 p) {
+        float val = 0.0;
+        float amp = 0.5;
+        for (int i = 0; i < 4; i++) {
+          val += amp * (snoise(p) * 0.5 + 0.5);
+          p = p * 2.03 + vec3(11.3, -6.7, 3.9);
+          amp *= 0.5;
+        }
+        return val;
+      }
+
+      float fbm3(vec3 p) {
+        float val = 0.0;
+        float amp = 0.5;
+        for (int i = 0; i < 3; i++) {
+          val += amp * (snoise(p) * 0.5 + 0.5);
+          p = p * 2.05 + vec3(7.1, -4.9, 2.3);
+          amp *= 0.5;
+        }
+        return val;
+      }
+
+      void main() {
+        vec2 ndc = vUv * 2.0 - 1.0;
+        vec3 ray = uCamForward
+          + uCamRight * (ndc.x * uAspect * uTanHalfFov)
+          + uCamUp * (ndc.y * uTanHalfFov);
+        ray /= max(length(ray), 0.0001);
+
+        vec2 pVP = (vUv - 0.5) * vec2(uAspect, 1.0) - uVanishingOffset;
+        float rVP = length(pVP);
+        float angleVP = atan(pVP.y, pVP.x);
+
+        float zenith = smoothstep(-0.85, 0.85, ray.y);
+        vec3 col = mix(uSkyMid * 0.65, uSkyDeep, zenith);
+
+        // Domain-warped velvet-dark cosmic nebula
+        float plane = dot(ray, normalize(vec3(0.36, 0.89, 0.28)));
+        float galacticBand = exp(-plane * plane * 4.6);
+
+        vec3 stretchRay = vec3(ray.xy * (1.0 - uWarp * 0.18), ray.z * (1.0 + uWarp * 0.30));
+        vec3 pNeb = stretchRay * 2.1 + vec3(0.0, uTime * 0.004, -uDrift * 0.15);
+        float n1 = fbm4(pNeb);
+        vec3 warpOff = vec3((n1 - 0.5) * 1.15, (0.5 - n1) * 0.95, -uDrift * 0.06);
+        float n2 = fbm4(pNeb * 1.48 + warpOff);
+
+        float wispA = smoothstep(0.34, 0.86, n1 * 0.52 + n2 * 0.56) * (0.42 + 0.65 * galacticBand);
+        float wispB = pow(max(smoothstep(0.38, 0.90, n2), 0.0001), 2.2) * (0.36 + 0.70 * galacticBand);
+
+        vec3 nebula = uNebulaA * wispA * 0.24 + uNebulaB * wispB * 0.20;
+        col += clamp(nebula, vec3(0.0), vec3(0.105));
+
+        // Ultra-delicate translucent gossamer spacetime veil visible only during warp
+        if (uVeilOpacity > 0.001) {
+          float zDepth = 1.25 / (rVP + 0.12);
+          float swirl1 = angleVP + zDepth * 0.18 - uTime * 0.11;
+          vec3 cyl1 = vec3(cos(swirl1) * 1.5, sin(swirl1) * 1.5, zDepth * 0.28 - uFlow * 0.80);
+          float silkBroad = fbm3(cyl1);
+
+          float swirl2 = angleVP - zDepth * 0.14 + uTime * 0.09;
+          vec3 cyl2 = vec3(cos(swirl2) * 2.9, sin(swirl2) * 2.9, zDepth * 0.15 - uFlow * 1.60);
+          float silkStream = fbm3(cyl2 + vec3((silkBroad - 0.5) * 1.05, (0.5 - silkBroad) * 0.90, 0.0));
+
+          float curtain = smoothstep(0.32, 0.86, silkBroad) * 0.48;
+          float currents = pow(max(smoothstep(0.45, 0.91, silkStream), 0.0001), 2.3) * 0.88;
+
+          float radialVeilMask = smoothstep(0.07, 0.48, rVP) * (0.78 + 0.30 * smoothstep(0.35, 1.05, rVP));
+          vec3 veilCol = (uVeilA * curtain + uVeilB * currents) * radialVeilMask * uVeilOpacity;
+          col += clamp(veilCol, vec3(0.0), vec3(0.16));
+        }
+
+        // Subtle deep sapphire vanishing depth glow (never white)
+        float vpInner = exp(-rVP * rVP * 24.0);
+        float vpOuter = exp(-rVP * rVP * 4.8);
+        col += uVpGlow * (vpInner * 0.38 + vpOuter * 0.52) * (0.12 + uWarp * 0.28);
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2B. Analytical 2D Capsule SDF in Exact Physical Screen Pixel Space
+    //     - Used by ALL 3 continuous dynamic star layers (ZERO static background stars)
+    //     - View-space near-plane clipping (nearZ = -0.35) BEFORE perspective projection
+    //     - Minimum half-width >= 4.8 physical pixels -> ZERO WebGL dropout/dashed lines
+    //     - Razor-sharp pinpoint stars & screen-aligned 4-point diffraction spikes at rest
+    //     - Energy conservation & gemstone hue gradient along streaks during warp
+    // ----------------------------------------------------------------------------
+    const CAPSULE_STAR_VERT = /* glsl */ `
+      attribute vec3 aCylPos;       // (radius, angle, initialZ)
+      attribute vec4 aMeta;         // (idleCoreCssPx, speedMult, tailScale, phase)
+      attribute vec4 aFlags;        // (hasSpike, densityRank, magBrightness, radialFadeSeed)
+      attribute vec4 aColorWeights; // 4-way active realm gemstone color weights
+
+      uniform float uTime;
+      uniform float uTravelDist;
+      uniform float uZMin;
+      uniform float uZMax;
+      uniform float uStretchWorld;
+      uniform float uWarpMix;
+      uniform float uCharge;
+      uniform float uDensityCutoff;
+      uniform float uLayerMode;     // 0 = Deep-space, 1 = Main streams, 2 = Peripheral fast streaks
+      uniform float uSwirlRate;
+      uniform float uPixelRatio;
+      uniform vec2  uResolution;
+      uniform vec2  uVanishingUv;
+      uniform float uAspect;
+
+      uniform vec3  uStar0;
+      uniform vec3  uStar1;
+      uniform vec3  uStar2;
+      uniform vec3  uStar3;
+
+      varying float vAlongPx;
+      varying float vAcrossPx;
+      varying float vSegLenPx;
+      varying float vCoreRadiusPx;
+      varying vec3  vColor;
+      varying float vAlpha;
+      varying float vTwinkle;
+      varying float vHasSpike;
+      varying float vWarpMix;
+      varying float vHeadClipped;
+      varying vec2  vDirPx;
+      varying vec2  vQuadUV;
+
+      void main() {
+        float densityVis = 1.0;
+        if (uLayerMode > 0.5 && uLayerMode < 1.5) {
+          densityVis = smoothstep(uDensityCutoff, uDensityCutoff - 0.10, aFlags.y);
+        }
+        if (densityVis < 0.002) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          return;
+        }
+
+        // Camera looks down -Z; stars continuously advance toward +Z
+        float zSpan = max(uZMax - uZMin, 1.0);
+        float zHead = uZMin + mod(aCylPos.z + uTravelDist * aMeta.y, zSpan);
+        float streakWorldLen = uStretchWorld * aMeta.z;
+        float zTail = zHead - streakWorldLen;
+
+        float radius = aCylPos.x;
+        float angle = aCylPos.y + uTime * uSwirlRate * (0.45 + 0.55 * aMeta.y);
+        float cx = cos(angle) * radius;
+        float cy = sin(angle) * radius;
+
+        vec3 vHead = (modelViewMatrix * vec4(cx, cy, zHead, 1.0)).xyz;
+        vec3 vTail = (modelViewMatrix * vec4(cx, cy, zTail, 1.0)).xyz;
+
+        // STRICT view-space near-plane clipping (nearZ = -0.35) BEFORE projection
+        const float nearZ = -0.35;
+        if (vHead.z > nearZ && vTail.z > nearZ) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          return;
+        }
+
+        float headClipped = 0.0;
+        if (vHead.z > nearZ && vTail.z <= nearZ) {
+          float t = clamp((nearZ - vTail.z) / max(vHead.z - vTail.z, 0.0001), 0.0, 1.0);
+          vHead = mix(vTail, vHead, t);
+          headClipped = 1.0;
+        } else if (vTail.z > nearZ && vHead.z <= nearZ) {
+          float t = clamp((nearZ - vHead.z) / max(vTail.z - vHead.z, 0.0001), 0.0, 1.0);
+          vTail = mix(vHead, vTail, t);
+        }
+
+        vec4 cHead = projectionMatrix * vec4(vHead, 1.0);
+        vec4 cTail = projectionMatrix * vec4(vTail, 1.0);
+
+        vec2 ndcHead = cHead.xy / max(cHead.w, 0.0001);
+        vec2 ndcTail = cTail.xy / max(cTail.w, 0.0001);
+
+        if ((ndcHead.x < -1.55 && ndcTail.x < -1.55) || (ndcHead.x > 1.55 && ndcTail.x > 1.55) ||
+            (ndcHead.y < -1.55 && ndcTail.y < -1.55) || (ndcHead.y > 1.55 && ndcTail.y > 1.55)) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          return;
+        }
+
+        vec2 pxHead = ndcHead * 0.5 * uResolution;
+        vec2 pxTail = ndcTail * 0.5 * uResolution;
+
+        vec2 deltaPx = pxHead - pxTail;
+        float segLenPx = length(deltaPx);
+        vec2 dirPx = segLenPx > 0.001 ? (deltaPx / segLenPx) : vec2(1.0, 0.0);
+        vec2 perpPx = vec2(-dirPx.y, dirPx.x);
+
+        float depth = max(-vHead.z, 1.0);
+        float depthBoost = clamp(95.0 / (depth + 55.0), 0.72, 1.28);
+
+        float idleCorePx = clamp(aMeta.x * depthBoost, 0.65, 1.80) * uPixelRatio;
+        float streakCorePx = clamp(aMeta.x * 0.72 * depthBoost, 0.55, 1.15) * uPixelRatio;
+        float streakWeight = smoothstep(0.5 * uPixelRatio, 8.0 * uPixelRatio, segLenPx);
+        float coreRadiusPx = mix(idleCorePx, streakCorePx, max(uWarpMix * 0.75, streakWeight));
+
+        // Guaranteed minimum screen-space half-width >= 4.8 physical pixels (zero dashed aliasing!)
+        // Generous resting padding ensures soft star halo & diffraction spikes fade cleanly to 0 inside quad
+        float minHalfWidthPx = max(4.8, 2.6 * uPixelRatio);
+        float idlePad = aFlags.x > 0.5
+          ? max(coreRadiusPx * 11.5, 16.5 * uPixelRatio)
+          : max(coreRadiusPx * 7.5, max(8.5 * uPixelRatio, minHalfWidthPx));
+        float streakPad = max(coreRadiusPx * 5.2, max(6.0 * uPixelRatio, minHalfWidthPx));
+        float quadPadPx = mix(idlePad, streakPad, streakWeight);
+
+        // Right-handed quad expansion (position.x along dirPx, position.y along perpPx)
+        float alongPx = mix(-quadPadPx, segLenPx + quadPadPx, position.x + 0.5);
+        float acrossPx = position.y * 2.0 * quadPadPx;
+        vec2 finalPx = pxTail + dirPx * alongPx + perpPx * acrossPx;
+
+        gl_Position = vec4(finalPx / (0.5 * uResolution), 0.0, 1.0);
+        vQuadUV = position.xy * 2.0;
+
+        float farFade = smoothstep(uZMin, uZMin + zSpan * 0.24, zHead);
+        float nearFade = uLayerMode < 0.5
+          ? (1.0 - smoothstep(uZMax - 36.0, uZMax - 2.0, zHead))
+          : (1.0 - smoothstep(uZMax - 18.0, uZMax - 1.2, zHead));
+
+        // Smooth radial vanishing-point emergence fade during warp only (no center cutout ring!)
+        float radialEmerge = smoothstep(0.35, 3.8, radius);
+        vec2 midUv = mix(ndcTail, ndcHead, 0.65) * 0.5 + 0.5;
+        float distVP = length((midUv - uVanishingUv) * vec2(uAspect, 1.0));
+        float vpSoft = smoothstep(0.012 + aFlags.w * 0.025, 0.16 + aFlags.w * 0.07, distVP);
+        float vpCrowd = 0.45 + 0.55 * smoothstep(0.06, 0.44, distVP);
+        float emergenceGate = mix(1.0, radialEmerge * vpSoft * vpCrowd, streakWeight * (uLayerMode < 0.5 ? 0.55 : 0.95));
+
+        float tw1 = sin(uTime * (1.35 + aMeta.y * 1.25) + aMeta.w * 6.2831);
+        float tw2 = sin(uTime * (2.75 + aMeta.z * 1.45) + aMeta.w * 15.3);
+        float twinkle = 0.72 + 0.28 * (tw1 * 0.65 + tw2 * 0.35);
+        float chargeLift = 1.0 + uCharge * (uLayerMode < 0.5 ? 0.30 : 0.42);
+
+        vAlongPx = alongPx;
+        vAcrossPx = acrossPx;
+        vSegLenPx = segLenPx;
+        vCoreRadiusPx = coreRadiusPx;
+        vColor = uStar0 * aColorWeights.x
+               + uStar1 * aColorWeights.y
+               + uStar2 * aColorWeights.z
+               + uStar3 * aColorWeights.w;
+        vAlpha = farFade * nearFade * emergenceGate * aFlags.z * densityVis * chargeLift;
+        vTwinkle = mix(twinkle, 0.92 + 0.08 * tw1, streakWeight);
+        vHasSpike = aFlags.x;        vWarpMix = max(uWarpMix, streakWeight);
+        vHeadClipped = headClipped;
+        vDirPx = dirPx;
+      }
+    `;
+
+    const CAPSULE_STAR_FRAG = /* glsl */ `
+      precision highp float;
+
+      uniform float uPixelRatio;
+      uniform vec3  uHeadTint;
+
+      varying float vAlongPx;
+      varying float vAcrossPx;
+      varying float vSegLenPx;
+      varying float vCoreRadiusPx;
+      varying vec3  vColor;
+      varying float vAlpha;
+      varying float vTwinkle;
+      varying float vHasSpike;
+      varying float vWarpMix;
+      varying float vHeadClipped;
+      varying vec2  vDirPx;
+      varying vec2  vQuadUV;
+
+      void main() {
+        if (vAlpha < 0.002) discard;
+
+        // Smooth circular window when resting & exact-zero edge taper when streaking
+        // Completely eliminates any faint square bounding-box clipping around stars!
+        float streakWindowMix = smoothstep(0.5 * uPixelRatio, 6.0 * uPixelRatio, vSegLenPx);
+        float radialWindow = smoothstep(1.0, 0.42, length(vQuadUV));
+        float streakWindow = smoothstep(1.0, 0.52, abs(vQuadUV.x)) * smoothstep(1.0, 0.42, abs(vQuadUV.y));
+        float quadWindow = mix(radialWindow, streakWindow, streakWindowMix);
+        if (quadWindow < 0.001) discard;
+
+        float clampedAlong = clamp(vAlongPx, 0.0, vSegLenPx);
+        float distPx = length(vec2(vAlongPx - clampedAlong, vAcrossPx));
+        float tAlong = vSegLenPx > 0.05 ? clamp(clampedAlong / vSegLenPx, 0.0, 1.0) : 1.0;
+
+        float taper = mix(1.0, mix(0.45, 1.0, pow(max(tAlong, 0.0001), 0.60)), vWarpMix);
+        float localCore = vCoreRadiusPx * taper;
+
+        float effCore = max(localCore, 0.58);
+        float aaConservation = clamp(localCore / effCore, 0.48, 1.0);
+
+        // Gaussian core + Gaussian halo (decays cleanly to zero well before quad edge)
+        float core = exp(-pow(distPx / effCore, 2.0)) * aaConservation;
+        float halo = 0.24 * exp(-pow(distPx / max(effCore * 2.45, 1.05), 2.0)) * aaConservation;
+
+        // Crisp screen-aligned 4-point diffraction cross spikes on brightest stars when stationary
+        float spikes = 0.0;
+        float spikeMask = 1.0 - smoothstep(0.6 * uPixelRatio, 6.0 * uPixelRatio, vSegLenPx);
+        if (vHasSpike > 0.5 && spikeMask > 0.005) {
+          vec2 localFromHead = vec2(vAlongPx - vSegLenPx, vAcrossPx);
+          vec2 screenFromHead = vec2(
+            vDirPx.x * localFromHead.x - vDirPx.y * localFromHead.y,
+            vDirPx.y * localFromHead.x + vDirPx.x * localFromHead.y
+          );
+          vec2 cssDelta = screenFromHead / max(uPixelRatio, 1.0);
+          vec2 rp = mat2(0.978, -0.208, 0.208, 0.978) * cssDelta;
+          float spikeSpan = clamp((vCoreRadiusPx / max(uPixelRatio, 1.0)) * 5.2, 4.4, 9.8);
+          float spH = exp(-abs(rp.y) * 3.6) * exp(-abs(rp.x) / (spikeSpan * 0.42)) * smoothstep(spikeSpan * 1.25, 0.0, abs(rp.x));
+          float spV = exp(-abs(rp.x) * 3.6) * exp(-abs(rp.y) / (spikeSpan * 0.42)) * smoothstep(spikeSpan * 1.25, 0.0, abs(rp.y));
+          spikes = (spH + spV) * 0.42 * spikeMask;
+        }
+
+        float longitudinal = mix(1.0, pow(max(tAlong, 0.0001), 0.85), vWarpMix);
+        float distHeadPx = length(vec2(vAlongPx - vSegLenPx, vAcrossPx));
+        float headPinpoint = exp(-pow(distHeadPx / max(vCoreRadiusPx * 1.08, 0.72), 2.0))
+                           * 0.52 * vWarpMix * (1.0 - vHeadClipped);
+
+        // Energy conservation during warp stretching
+        float lengthAtten = 1.0 / pow(1.0 + vSegLenPx / max(48.0 * uPixelRatio, 1.0), 0.30);
+
+        float shape = (((core + halo) * longitudinal + headPinpoint) * lengthAtten + spikes) * quadWindow;
+        if (shape < 0.003) discard;
+
+        // Icy-white star head transitioning smoothly into saturated gemstone tail
+        float headWhiteness = mix(
+          clamp(core * 0.58 + spikes * 0.35, 0.0, 0.72),
+          clamp(headPinpoint * 0.95 + core * pow(max(tAlong, 0.0001), 2.6) * 0.38, 0.0, 0.75),
+          vWarpMix
+        );
+        vec3 saturatedBody = vColor * mix(1.08, 1.22, vWarpMix);
+        vec3 finalColor = mix(saturatedBody, uHeadTint, headWhiteness);
+
+        float gain = mix(1.18, 1.08, vWarpMix);
+        gl_FragColor = vec4(finalColor * shape * vAlpha * vTwinkle * gain, 1.0);
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2C. Pass 2: Geometrically Locked Gravitational Lensing Black Hole + Warp Ripples
+    //     Reads spaceRT -> writes into sceneRT (BEFORE 3D rocketScene renders on top!)
+    // ----------------------------------------------------------------------------
+    const LENSING_BLACKHOLE_FRAG = /* glsl */ `
+      precision highp float;
+
+      uniform sampler2D tSpace;
+      uniform vec2  uBlackHoleUV;       // Exact projected 3D anchor (0, 0.25, -14.5) in UV
+      uniform vec2  uVanishingUV;       // Projected tunnel vanishing point in UV
+      uniform float uAspect;
+      uniform float uTime;
+      uniform float uBlackHoleScale;    // Perspective-consistent screen horizon radius
+      uniform float uBlackHoleVis;      // 0..1 visibility envelope
+      uniform float uBlackHoleLens;     // 0..1 Einstein-ring deflection strength
+      uniform float uChargePulse;       // Singularity contraction pulse 0..1
+      uniform float uAbsorbPulse;       // Rocket entry photon-ring absorption ripple 0..1
+      uniform vec3  uDiskInner;         // Warm golden-white inner photon tint
+      uniform vec3  uDiskOuter;         // Active realm outer accretion tint
+      uniform float uRippleScale;       // User ripple intensity multiplier
+      uniform vec2  uRipple1;           // (progress 0..1, strength) breakthrough wave
+      uniform vec2  uRipple2;           // (progress 0..1, strength) arrival wave
+      uniform vec3  uAccentColor;
+
+      varying vec2 vUv;
+
+      // Ashima 3D Simplex Noise for seamless swirling accretion disk & halo arcs
+      vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
+      vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+      float snoise(vec3 v) {
+        const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+        const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+        vec3 i  = floor(v + dot(v, C.yyy));
+        vec3 x0 = v - i + dot(i, C.xxx);
+        vec3 g = step(x0.yzx, x0.xyz);
+        vec3 l = 1.0 - g;
+        vec3 i1 = min(g.xyz, l.zxy);
+        vec3 i2 = max(g.xyz, l.zxy);
+        vec3 x1 = x0 - i1 + C.xxx;
+        vec3 x2 = x0 - i2 + C.yyy;
+        vec3 x3 = x0 - D.yyy;
+        i = mod(i, 289.0);
+        vec4 p = permute(permute(permute(
+                  i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+        float n_ = 1.0 / 7.0;
+        vec3 ns = n_ * D.wyz - D.xzx;
+        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+        vec4 x_ = floor(j * ns.z);
+        vec4 y_ = floor(j - 7.0 * x_);
+        vec4 x = x_ * ns.x + ns.yyyy;
+        vec4 y = y_ * ns.x + ns.yyyy;
+        vec4 h = 1.0 - abs(x) - abs(y);
+        vec4 b0 = vec4(x.xy, y.xy);
+        vec4 b1 = vec4(x.zw, y.zw);
+        vec4 s0 = floor(b0) * 2.0 + 1.0;
+        vec4 s1 = floor(b1) * 2.0 + 1.0;
+        vec4 sh = -step(h, vec4(0.0));
+        vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+        vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+        vec3 p0 = vec3(a0.xy, h.x);
+        vec3 p1 = vec3(a0.zw, h.y);
+        vec3 p2 = vec3(a1.xy, h.z);
+        vec3 p3 = vec3(a1.zw, h.w);
+        vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+        p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+        vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+        m = m * m;
+        return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+      }
+
+      float fbm3(vec3 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 3; i++) {
+          v += a * (snoise(p) * 0.5 + 0.5);
+          p = p * 2.05 + vec3(5.7, -3.9, 2.1);
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      void evalWarpRipple(
+        vec2 ripple,
+        float dist,
+        vec2 radialUvDir,
+        inout vec2 refractUv,
+        inout vec2 prismUv,
+        inout float crestSheen
+      ) {
+        float prog = ripple.x;
+        float str  = ripple.y * uRippleScale;
+        if (str < 0.001 || prog <= 0.001 || prog >= 0.999) return;
+
+        float ringR = prog * 1.48;
+        float width = 0.044 + prog * 0.056;
+        float d = dist - ringR;
+        float normD = d / max(width, 0.001);
+
+        float fadeIn  = smoothstep(0.0, 0.08, prog);
+        float fadeOut = 1.0 - smoothstep(0.65, 1.0, prog);
+        float gauss   = exp(-normD * normD);
+        float env     = gauss * fadeIn * fadeOut * str;
+
+        refractUv  += -radialUvDir * (normD * env * 0.026);
+        prismUv    += radialUvDir * (env * 0.0105);
+        crestSheen += gauss * gauss * fadeIn * fadeOut * str * 0.042;
+      }
+
+      void main() {
+        // 1) Evaluate breakthrough / arrival transparent gravitational lensing ripples
+        vec2 vpOff = vUv - uVanishingUV;
+        vec2 vpAspectVec = vpOff * vec2(uAspect, 1.0);
+        float vpDist = length(vpAspectVec);
+        vec2 vpRadAspect = vpDist > 0.0001 ? (vpAspectVec / vpDist) : vec2(0.0);
+        vec2 vpRadUv = vec2(vpRadAspect.x / max(uAspect, 0.001), vpRadAspect.y);
+
+        vec2 totalRefract = vec2(0.0);
+        vec2 totalPrism = vec2(0.0);
+        float rippleSheen = 0.0;
+
+        evalWarpRipple(uRipple1, vpDist, vpRadUv, totalRefract, totalPrism, rippleSheen);
+        evalWarpRipple(uRipple2, vpDist, vpRadUv, totalRefract, totalPrism, rippleSheen);
+
+        // 2) Evaluate Black Hole Einstein-ring gravitational deflection around uBlackHoleUV
+        vec2 bhOff = vUv - uBlackHoleUV;
+        vec2 bhAspectVec = bhOff * vec2(uAspect, 1.0);
+        float bhDist = length(bhAspectVec);
+        vec2 bhRadAspect = bhDist > 0.0001 ? (bhAspectVec / bhDist) : vec2(0.0);
+        vec2 bhRadUv = vec2(bhRadAspect.x / max(uAspect, 0.001), bhRadAspect.y);
+
+        float R = max(uBlackHoleScale, 0.0005);
+        if (uBlackHoleLens > 0.0005 && uBlackHoleScale > 0.001) {
+          float deflect = uBlackHoleLens * (R * R) * 1.48 / (bhDist + R * 0.35);
+          float outerEnv = exp(-pow(bhDist / max(R * 5.8, 0.06), 1.55));
+          float dAmt = deflect * outerEnv;
+          totalRefract -= bhRadUv * dAmt;
+
+          float nearSphere = exp(-pow((bhDist - R * 1.25) / max(R * 0.95, 0.02), 2.0));
+          totalPrism += bhRadUv * (dAmt * 0.068 * nearSphere);
+        }
+
+        // Sample spaceRT (exact 1:1 pixel tap when idle for razor-sharp stationary stars!)
+        vec3 col;
+        if (dot(totalRefract, totalRefract) > 1e-10 || dot(totalPrism, totalPrism) > 1e-10) {
+          vec2 sUv = vUv + totalRefract;
+          col.r = texture2D(tSpace, clamp(sUv + totalPrism, 0.001, 0.999)).r;
+          col.g = texture2D(tSpace, clamp(sUv, 0.001, 0.999)).g;
+          col.b = texture2D(tSpace, clamp(sUv - totalPrism, 0.001, 0.999)).b;
+        } else {
+          col = texture2D(tSpace, vUv).rgb;
+        }
+
+        col += mix(uAccentColor, vec3(0.95, 0.98, 1.0), 0.30) * rippleSheen;
+
+        // 3) Render Miniature 3D Gargantua Black Hole (velvet horizon, photon ring, swirling FBM disk)
+        if (uBlackHoleVis > 0.001 && uBlackHoleScale > 0.001) {
+          float maxReach = R * 5.2;
+          if (bhDist < maxReach) {
+            float edgeMask = 1.0 - smoothstep(maxReach * 0.68, maxReach, bhDist);
+
+            // Subtle serene tilt (-13 deg)
+            float ct = 0.9744;
+            float st = -0.2250;
+            vec2 rp = vec2(ct * bhAspectVec.x - st * bhAspectVec.y, st * bhAspectVec.x + ct * bhAspectVec.y);
+            float angle = atan(rp.y, rp.x);
+
+            // Pure velvet-black circular event horizon core
+            float coreOcclusion = (1.0 - smoothstep(R * 0.93, R * 1.03, bhDist)) * uBlackHoleVis;
+
+            // Crisp luminous golden-white / theme-tinted photon ring
+            float ringDist = (bhDist - R * 1.045) / max(R * 0.078, 0.002);
+            float photonRing = exp(-ringDist * ringDist);
+            float photonHalo = exp(-pow((bhDist - R * 1.08) / max(R * 0.28, 0.006), 2.0)) * 0.42;
+            float doppler = 0.84 + 0.24 * cos(angle + 2.35);
+
+            // Gravitational-lensed upper & lower light halo arcs
+            float arcR = length(vec2(rp.x * 0.96, rp.y * 1.05));
+            float arcBand = exp(-pow((arcR - R * 1.24) / max(R * 0.42, 0.008), 2.0));
+            float verticalBias = smoothstep(0.08, 0.72, abs(sin(angle)));
+            float swirlA = angle - uTime * 1.35 + (R * 1.4) / max(arcR, R * 0.4);
+            float arcTex = fbm3(vec3(cos(swirlA) * 2.2, sin(swirlA) * 2.2, (arcR / R) * 1.1 - uTime * 0.55));
+            float lensedArcs = arcBand * verticalBias * (0.45 + 0.85 * pow(max(arcTex, 0.0001), 1.5)) * smoothstep(R * 0.92, R * 1.08, bhDist);
+
+            // Tilted rotating multi-octave FBM equatorial accretion disk
+            vec2 diskP = vec2(rp.x, rp.y * 3.35);
+            float rDisk = length(diskP);
+            float diskRadial = smoothstep(R * 0.96, R * 1.38, rDisk) * exp(-max(0.0, rDisk - R * 1.38) / max(R * 1.42, 0.02));
+            float diskAngle = atan(diskP.y, diskP.x);
+            float swirlD = diskAngle - uTime * 2.15 + (R * 2.2) / max(rDisk, R * 0.35);
+            float diskFbm = fbm3(vec3(cos(swirlD) * 2.5, sin(swirlD) * 2.5, (rDisk / R) * 1.2 - uTime * 0.9));
+            float diskFilaments = pow(max(smoothstep(0.24, 0.88, diskFbm), 0.0001), 1.65);
+
+            float frontHalf = smoothstep(0.04 * R, -0.05 * R, rp.y);
+            float behindMask = smoothstep(R * 0.94, R * 1.06, bhDist);
+            float diskVis = mix(behindMask, 1.0, frontHalf * 0.85);
+            float accretionDisk = diskRadial * (0.36 + 0.95 * diskFilaments) * diskVis * (0.82 + 0.26 * cos(diskAngle + 2.5));
+
+            // Expanding soft photon-ring absorption pulse when 3D rocket dives in
+            float absorbRing = 0.0;
+            float absorbGlow = 0.0;
+            if (uAbsorbPulse > 0.002) {
+              float ap = 1.0 - uAbsorbPulse;
+              float waveR = R * (1.02 + ap * 2.55);
+              float waveW = R * (0.14 + ap * 0.22);
+              absorbRing = exp(-pow((bhDist - waveR) / max(waveW, 0.003), 2.0)) * uAbsorbPulse * smoothstep(R * 0.85, R * 1.05, bhDist);
+              absorbGlow = photonRing * uAbsorbPulse * 1.25;
+            }
+
+            float chargeBoost = 1.0 + uChargePulse * 0.45;
+            vec3 ringCol = mix(uDiskOuter, uDiskInner, 0.72) * (photonRing * 1.35 + photonHalo * 0.72) * doppler * chargeBoost;
+            vec3 arcCol  = mix(uDiskOuter, uDiskInner, 0.38) * lensedArcs * 0.68 * chargeBoost;
+            vec3 diskCol = mix(uDiskOuter, uDiskInner, smoothstep(R * 2.6, R * 1.08, rDisk) * 0.75) * accretionDisk * 0.94 * chargeBoost;
+            vec3 absorbCol = mix(uDiskOuter, vec3(1.0, 0.95, 0.82), 0.55) * (absorbRing * 1.32 + absorbGlow * 0.90);
+
+            vec3 emission = (ringCol + arcCol + diskCol + absorbCol) * edgeMask * uBlackHoleVis;
+
+            // Composite black hole shadow & luminous emission cleanly onto lensed starfield
+            float outerDustOcc = clamp((accretionDisk * 0.20 + lensedArcs * 0.10) * edgeMask * uBlackHoleVis, 0.0, 0.28);
+            float occAlpha = clamp(max(coreOcclusion, outerDustOcc), 0.0, 1.0);
+            vec3 velvetCore = vec3(0.002, 0.003, 0.008);
+
+            col = col * (1.0 - occAlpha) + mix(emission, velvetCore, coreOcclusion * (1.0 - frontHalf * diskRadial * 0.65));
+          }
+        }
+
+        // Write alpha = 0.0 for cosmic space & black hole so sceneRT.a serves as a pure MSAA 3D rocket coverage mask!
+        gl_FragColor = vec4(col, 0.0);
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2D. 3D Rocket Dynamic Exhaust Flame Shader (Double-Layered Organic Wobble)
+    // ----------------------------------------------------------------------------
+    const FLAME_VERT = /* glsl */ `
+      uniform float uTime;
+      uniform float uFlamePower;
+      uniform float uFlameStretch;
+      uniform float uPhaseOffset;
+
+      varying float vT;
+      varying vec3  vNormalView;
+      varying vec3  vViewDir;
+
+      void main() {
+        // LatheGeometry uv.y goes from 0.0 at nozzle (y = 0) to 1.0 at teardrop tip
+        vT = clamp(uv.y, 0.0, 1.0);
+
+        vec3 pos = position;
+        pos.y *= uFlameStretch;
+
+        // Soft organic lateral sway & breathing pulse stronger toward flame tip
+        float wobbleAmt = (0.022 + uFlamePower * 0.020) * vT * vT;
+        pos.x += sin(uTime * 15.5 + uPhaseOffset + pos.y * 5.2) * wobbleAmt;
+        pos.z += cos(uTime * 13.2 + uPhaseOffset * 1.7 + pos.y * 4.6) * wobbleAmt;
+
+        float breathe = 1.0 + sin(uTime * 23.0 + uPhaseOffset - vT * 5.5) * (0.055 + uFlamePower * 0.03) * vT;
+        pos.xz *= breathe;
+
+        vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+        vNormalView = normalize(normalMatrix * normal);
+        vViewDir = normalize(-mvPos.xyz);
+
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `;
+
+    const FLAME_FRAG = /* glsl */ `
+      precision highp float;
+
+      uniform float uTime;
+      uniform float uFlamePower;
+      uniform float uPhaseOffset;
+      uniform vec3  uColorTop;
+      uniform vec3  uColorTip;
+      uniform float uOpacityScale;
+
+      varying float vT;
+      varying vec3  vNormalView;
+      varying vec3  vViewDir;
+
+      void main() {
+        // Volumetric soft Fresnel edge attenuation so teardrop flame has plush silhouettes
+        float ndotv = abs(dot(normalize(vNormalView), normalize(vViewDir)));
+        float fresnel = pow(clamp(ndotv, 0.0, 1.0), 0.72);
+
+        // Smooth blend at nozzle rim & tapered glow toward flame tip
+        float nozzleFade = smoothstep(0.0, 0.14, vT);
+        float tipFade = pow(max(1.0 - vT, 0.0001), 0.75);
+        float pulse = 0.88 + 0.12 * sin(uTime * 26.0 + uPhaseOffset - vT * 6.5);
+
+        vec3 col = mix(uColorTop, uColorTip, smoothstep(0.08, 0.92, vT));
+        float gain = (0.85 + uFlamePower * 0.82) * pulse;
+        float alpha = clamp(fresnel * nozzleFade * tipFade * uOpacityScale * (0.72 + uFlamePower * 0.28), 0.0, 1.0);
+
+        if (alpha < 0.003) discard;
+        gl_FragColor = vec4(col * gain, alpha);
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2E. 3D Starlight Exhaust Cloud Puffs & Twinkling 4-Point Sparkles
+    // ----------------------------------------------------------------------------
+    const EXHAUST_PARTICLE_VERT = /* glsl */ `
+      attribute float aSize;
+      attribute float aAlpha;
+      attribute float aType;
+      attribute float aRot;
+      attribute vec3  aColor;
+
+      uniform float uPixelRatio;
+      uniform float uProjScale;
+
+      varying float vAlpha;
+      varying float vType;
+      varying float vRot;
+      varying vec3  vColor;
+
+      void main() {
+        vAlpha = aAlpha;
+        vType = aType;
+        vRot = aRot;
+        vColor = aColor;
+
+        if (aAlpha < 0.002) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          gl_PointSize = 0.0;
+          return;
+        }
+
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        if (mvPos.z > -0.2) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          gl_PointSize = 0.0;
+          return;
+        }
+
+        gl_Position = projectionMatrix * mvPos;
+        float dist = max(-mvPos.z, 0.5);
+        gl_PointSize = clamp((aSize * uProjScale / dist) * uPixelRatio, 1.5, 96.0 * uPixelRatio);
+      }
+    `;
+
+    const EXHAUST_PARTICLE_FRAG = /* glsl */ `
+      precision highp float;
+
+      varying float vAlpha;
+      varying float vType;
+      varying float vRot;
+      varying vec3  vColor;
+
+      void main() {
+        if (vAlpha < 0.002) discard;
+
+        vec2 p = gl_PointCoord * 2.0 - 1.0;
+        float r = length(p);
+        if (r > 1.0) discard;
+
+        float shape = 0.0;
+        if (vType < 0.5) {
+          // Soft fluffy pastel exhaust cloud puff
+          shape = exp(-r * r * 3.4) * smoothstep(1.0, 0.18, r);
+        } else {
+          // Cute twinkling 4-point starlight sparkle
+          float c = cos(vRot);
+          float s = sin(vRot);
+          vec2 rp = vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+          float core = exp(-r * r * 14.0);
+          float rayH = exp(-abs(rp.y) * 14.0) * exp(-abs(rp.x) * 2.6);
+          float rayV = exp(-abs(rp.x) * 14.0) * exp(-abs(rp.y) * 2.6);
+          shape = (core * 1.15 + (rayH + rayV) * 0.65) * smoothstep(1.0, 0.35, r);
+        }
+
+        float alpha = clamp(shape * vAlpha, 0.0, 1.0);
+        if (alpha < 0.003) discard;
+
+        vec3 col = mix(vColor, vec3(1.0, 0.99, 0.96), clamp(shape * 0.45, 0.0, 0.65));
+        gl_FragColor = vec4(col * (vType < 0.5 ? 0.95 : 1.35), alpha);
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2F. 3D Starlight Return Portal Ring Shader (Stage 5 Arrival)
+    // ----------------------------------------------------------------------------
+    const PORTAL_RING_VERT = /* glsl */ `
+      varying vec2 vLocal;
+      void main() {
+        vLocal = position.xy;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+
+    const PORTAL_RING_FRAG = /* glsl */ `
+      precision highp float;
+
+      uniform float uTime;
+      uniform float uProgress;
+      uniform vec3  uColorA;
+      uniform vec3  uColorB;
+
+      varying vec2 vLocal;
+
+      void main() {
+        float r = length(vLocal);
+        if (r > 1.0) discard;
+
+        float p = clamp(uProgress, 0.0, 1.0);
+        float fadeIn  = smoothstep(0.0, 0.18, p);
+        float fadeOut = 1.0 - smoothstep(0.58, 1.0, p);
+        float env = fadeIn * fadeOut;
+        if (env < 0.002) discard;
+
+        float angle = atan(vLocal.y, vLocal.x);
+        float ringR = 0.14 + 0.66 * (1.0 - pow(1.0 - p, 2.5));
+        float ringW = 0.055 + 0.045 * (1.0 - p);
+
+        float shimmer = 0.78 + 0.22 * sin(angle * 6.0 - uTime * 7.0);
+        float ring = exp(-pow((r - ringR) / max(ringW, 0.005), 2.0)) * shimmer;
+        float innerGlow = exp(-r * r * 6.5) * (1.0 - smoothstep(0.30, 0.90, p)) * 0.72;
+
+        // Delicate rotating 4-point portal star bloom at center
+        float c = cos(uTime * 1.8);
+        float s = sin(uTime * 1.8);
+        vec2 rp = vec2(c * vLocal.x - s * vLocal.y, s * vLocal.x + c * vLocal.y);
+        float starRays = (exp(-abs(rp.y) * 18.0) * exp(-abs(rp.x) * 3.4)
+                        + exp(-abs(rp.x) * 18.0) * exp(-abs(rp.y) * 3.4)) * (1.0 - p) * 0.75;
+
+        float intensity = (ring * 1.15 + innerGlow + starRays) * env * smoothstep(1.0, 0.78, r);
+        if (intensity < 0.003) discard;
+
+        vec3 col = mix(uColorA, uColorB, clamp(ring * 0.5 + innerGlow + starRays, 0.0, 1.0));
+        gl_FragColor = vec4(col * intensity * 1.35, clamp(intensity, 0.0, 1.0));
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2G. Post-Processing Pass 4: High-Threshold Soft-Knee HDR Bright Extract
+    // ----------------------------------------------------------------------------
+    const BRIGHT_EXTRACT_FRAG = /* glsl */ `
+      precision highp float;
+
+      uniform sampler2D tDiffuse;
+      uniform float uThreshold;
+      uniform float uSoftKnee;
+      varying vec2 vUv;
+
+      void main() {
+        vec3 col = texture2D(tDiffuse, vUv).rgb;
+        float peak = max(col.r, max(col.g, col.b));
+
+        float knee = uThreshold * uSoftKnee + 0.0001;
+        float soft = clamp(peak - uThreshold + knee, 0.0, 2.0 * knee);
+        soft = (soft * soft) / max(4.0 * knee, 0.0001);
+        float contrib = max(soft, peak - uThreshold) / max(peak, 0.0001);
+
+        vec3 extracted = col * clamp(contrib, 0.0, 1.10);
+        float exPeak = max(extracted.r, max(extracted.g, extracted.b));
+        if (exPeak > 1.35) {
+          extracted *= (1.35 + log(1.0 + (exPeak - 1.35)) * 0.42) / exPeak;
+        }
+        gl_FragColor = vec4(extracted, 1.0);
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2H. Post-Processing Pass 5: Separable 9-Tap Gaussian Blur
+    // ----------------------------------------------------------------------------
+    const BLUR_FRAG = /* glsl */ `
+      precision highp float;
+
+      uniform sampler2D tDiffuse;
+      uniform vec2 uDirection;
+      uniform vec2 uTexelSize;
+      varying vec2 vUv;
+
+      void main() {
+        vec2 stepUv = uDirection * uTexelSize;
+        vec3 sum = texture2D(tDiffuse, vUv).rgb * 0.22702703;
+        sum += texture2D(tDiffuse, clamp(vUv + stepUv * 1.38461538, 0.001, 0.999)).rgb * 0.31621622;
+        sum += texture2D(tDiffuse, clamp(vUv - stepUv * 1.38461538, 0.001, 0.999)).rgb * 0.31621622;
+        sum += texture2D(tDiffuse, clamp(vUv + stepUv * 3.23076923, 0.001, 0.999)).rgb * 0.07027027;
+        sum += texture2D(tDiffuse, clamp(vUv - stepUv * 3.23076923, 0.001, 0.999)).rgb * 0.07027027;
+        gl_FragColor = vec4(sum, 1.0);
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2I. Post-Processing Pass 6: HDR Bloom + Tonemapping Composite -> tonemapRT
+    //     Preserves sceneRT.a (rocket coverage mask) in gl_FragColor.a for Pass 7 FXAA!
+    // ----------------------------------------------------------------------------
+    const COMPOSITE_FRAG = /* glsl */ `
+      precision highp float;
+
+      uniform sampler2D tScene;
+      uniform sampler2D tBloomTight;
+      uniform sampler2D tBloomWide;
+
+      uniform vec2  uCenter;
+      uniform float uAspect;
+      uniform float uWarp;
+      uniform float uFovNorm;
+      uniform float uBloomStrength;
+      uniform float uChromatic;
+      uniform float uTime;
+
+      varying vec2 vUv;
+
+      vec3 softKneeCompress(vec3 col, float knee, float ceiling) {
+        float peak = max(col.r, max(col.g, col.b));
+        if (peak <= knee) return col;
+        float excess = peak - knee;
+        float range = max(ceiling - knee, 0.001);
+        float compressed = knee + range * (1.0 - exp(-excess / range));
+        return col * (compressed / max(peak, 0.0001));
+      }
+
+      vec3 acesPerChannel(vec3 x) {
+        const float a = 2.51;
+        const float b = 0.03;
+        const float c = 2.43;
+        const float d = 0.59;
+        const float e = 0.14;
+        return clamp((x * (a * x + b)) / max(x * (c * x + d) + e, vec3(0.0001)), 0.0, 1.0);
+      }
+
+      vec3 acesHuePreserve(vec3 col) {
+        float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
+        float mappedLuma = (luma * (2.51 * luma + 0.03)) / max(luma * (2.43 * luma + 0.59) + 0.14, 0.0001);
+        vec3 hueCol  = clamp(col * (mappedLuma / max(luma, 0.0001)), 0.0, 1.0);
+        vec3 filmCol = acesPerChannel(col);
+        return clamp(mix(filmCol, hueCol, 0.68), 0.0, 1.0);
+      }
+
+      void main() {
+        vec2 uvOffset = vUv - uCenter;
+        vec2 aspectVec = uvOffset * vec2(uAspect, 1.0);
+        float dist = length(aspectVec);
+
+        vec2 radialAspect = dist > 0.0001 ? (aspectVec / dist) : vec2(0.0);
+        vec2 radialUvDir  = vec2(radialAspect.x / max(uAspect, 0.001), radialAspect.y);
+
+        // Gentle peripheral optical curvature synced strictly to wide warp FOV (0 at rest)
+        float lensPull = uFovNorm * 0.030 * smoothstep(0.16, 0.96, dist);
+        vec2 sampleUv = uCenter + uvOffset * (1.0 - lensPull * dist * dist);
+
+        // Radial edge chromatic aberration: strictly 0 when idle -> razor-sharp stars!
+        float edgeMask = smoothstep(0.28, 0.98, dist);
+        vec2 warpChroma = radialUvDir * (edgeMask * edgeMask * 0.0085 * uChromatic * uWarp);
+
+        vec3 sceneCol;
+        float rocketMask;
+        if (dot(warpChroma, warpChroma) > 1e-10 || lensPull > 1e-5) {
+          vec4 gTap = texture2D(tScene, clamp(sampleUv, 0.001, 0.999));
+          sceneCol.r = texture2D(tScene, clamp(sampleUv + warpChroma, 0.001, 0.999)).r;
+          sceneCol.g = gTap.g;
+          sceneCol.b = texture2D(tScene, clamp(sampleUv - warpChroma, 0.001, 0.999)).b;
+          rocketMask = gTap.a;
+        } else {
+          vec4 tap = texture2D(tScene, vUv);
+          sceneCol = tap.rgb;
+          rocketMask = tap.a;
+        }
+
+        sceneCol = softKneeCompress(sceneCol, 0.98, 2.30);
+
+        // Dual-scale Black Pro-Mist HDR Bloom (1/2 tight star glow + 1/4 dreamy halo)
+        vec3 bloomTight = texture2D(tBloomTight, clamp(sampleUv, 0.001, 0.999)).rgb;
+        vec3 bloomWide  = texture2D(tBloomWide, clamp(sampleUv, 0.001, 0.999)).rgb;
+        float bloomScale = uBloomStrength * mix(0.65, 1.0, uWarp);
+        vec3 hdrCol = sceneCol + (bloomTight * 0.56 + bloomWide * 0.36) * bloomScale;
+
+        // Subtle dark atmospheric vignette
+        float vignette = 1.0 - smoothstep(0.52, 1.48, dist * 0.94);
+        hdrCol *= mix(0.78, 1.0, vignette);
+
+        // Hue-preserving ACES Filmic Tonemapping + Gamma Output
+        vec3 mapped = acesHuePreserve(hdrCol * 1.02);
+        mapped = pow(max(mapped, vec3(0.0)), vec3(1.0 / 2.2));
+
+        // Output LDR RGB + pure rocket coverage alpha for selective Pass 7 FXAA
+        gl_FragColor = vec4(clamp(mapped, 0.0, 1.0), clamp(rocketMask, 0.0, 1.0));
+      }
+    `;
+
+    // ----------------------------------------------------------------------------
+    // 2J. Post-Processing Pass 7: Selective Post-Tonemap FXAA 3.11 + 1/255 Dither
+    //     Smooths 3D rocket silhouettes, gold collars & fins to buttery perfection
+    //     even on dpr=1 screens while leaving 1px background stars 100% untouched!
+    // ----------------------------------------------------------------------------
+    const FXAA_FRAG = /* glsl */ `
+      precision highp float;
+
+      uniform sampler2D tDiffuse;
+      uniform vec2  uTexelSize;
+      uniform float uFxaaStrength;
+      uniform float uTime;
+
+      varying vec2 vUv;
+
+      float getLuma(vec3 rgb) {
+        return dot(rgb, vec3(0.299, 0.587, 0.114));
+      }
+
+      float hash12(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+      }
+
+      void main() {
+        vec4 tapM = texture2D(tDiffuse, vUv);
+        vec3 colM = tapM.rgb;
+
+        // Sample 3x3 neighborhood to dilate rocket coverage by 1px (covers both sides of silhouette edge)
+        vec4 tapN  = texture2D(tDiffuse, vUv + vec2( 0.0,  uTexelSize.y));
+        vec4 tapS  = texture2D(tDiffuse, vUv + vec2( 0.0, -uTexelSize.y));
+        vec4 tapE  = texture2D(tDiffuse, vUv + vec2( uTexelSize.x, 0.0));
+        vec4 tapW  = texture2D(tDiffuse, vUv + vec2(-uTexelSize.x, 0.0));
+        vec4 tapNE = texture2D(tDiffuse, vUv + vec2( uTexelSize.x,  uTexelSize.y));
+        vec4 tapNW = texture2D(tDiffuse, vUv + vec2(-uTexelSize.x,  uTexelSize.y));
+        vec4 tapSE = texture2D(tDiffuse, vUv + vec2( uTexelSize.x, -uTexelSize.y));
+        vec4 tapSW = texture2D(tDiffuse, vUv + vec2(-uTexelSize.x, -uTexelSize.y));
+
+        float maxMask = max(
+          tapM.a,
+          max(max(max(tapN.a, tapS.a), max(tapE.a, tapW.a)),
+              max(max(tapNE.a, tapNW.a), max(tapSE.a, tapSW.a)))
+        );
+
+        vec3 finalRgb = colM;
+
+        // Only execute FXAA where the 3D rocket occupies or borders this pixel -> 1px stars stay 100% crisp!
+        if (maxMask > 0.004 && uFxaaStrength > 0.001) {
+          float lumaM  = getLuma(colM);
+          float lumaN  = getLuma(tapN.rgb);
+          float lumaS  = getLuma(tapS.rgb);
+          float lumaE  = getLuma(tapE.rgb);
+          float lumaW  = getLuma(tapW.rgb);
+          float lumaNE = getLuma(tapNE.rgb);
+          float lumaNW = getLuma(tapNW.rgb);
+          float lumaSE = getLuma(tapSE.rgb);
+          float lumaSW = getLuma(tapSW.rgb);
+
+          float lumaMin = min(lumaM, min(min(lumaN, lumaS), min(lumaE, lumaW)));
+          float lumaMax = max(lumaM, max(max(lumaN, lumaS), max(lumaE, lumaW)));
+          float lumaRange = lumaMax - lumaMin;
+
+          if (lumaRange >= max(0.025, lumaMax * 0.0625)) {
+            // Subpixel contrast filter
+            float lumaL = (lumaN + lumaS + lumaE + lumaW) * 0.25;
+            float rangeL = abs(lumaL - lumaM);
+            float subpix = clamp(rangeL / max(lumaRange, 0.0001), 0.0, 1.0);
+            subpix = smoothstep(0.0, 1.0, subpix);
+            float subpixBlend = subpix * subpix * 0.72;
+
+            // Detect edge orientation (horizontal vs vertical)
+            float edgeH = abs(-2.0 * lumaW + lumaNW + lumaSW)
+                        + abs(-2.0 * lumaM + lumaN  + lumaS ) * 2.0
+                        + abs(-2.0 * lumaE + lumaNE + lumaSE);
+            float edgeV = abs(-2.0 * lumaN + lumaNW + lumaNE)
+                        + abs(-2.0 * lumaM + lumaW  + lumaE ) * 2.0
+                        + abs(-2.0 * lumaS + lumaSW + lumaSE);
+            bool isHoriz = edgeH >= edgeV;
+
+            float luma1 = isHoriz ? lumaS : lumaW;
+            float luma2 = isHoriz ? lumaN : lumaE;
+            float grad1 = abs(luma1 - lumaM);
+            float grad2 = abs(luma2 - lumaM);
+            bool is1Steepest = grad1 >= grad2;
+            float gradScaled = 0.25 * max(grad1, grad2);
+
+            float stepLen = isHoriz ? uTexelSize.y : uTexelSize.x;
+            float lumaLocalAvg;
+            if (is1Steepest) {
+              stepLen = -stepLen;
+              lumaLocalAvg = 0.5 * (luma1 + lumaM);
+            } else {
+              lumaLocalAvg = 0.5 * (luma2 + lumaM);
+            }
+
+            vec2 curUv = vUv;
+            if (isHoriz) curUv.y += stepLen * 0.5;
+            else         curUv.x += stepLen * 0.5;
+
+            vec2 offset = isHoriz ? vec2(uTexelSize.x, 0.0) : vec2(0.0, uTexelSize.y);
+            vec2 uv1 = curUv - offset;
+            vec2 uv2 = curUv + offset;
+
+            float lumaEnd1 = getLuma(texture2D(tDiffuse, uv1).rgb) - lumaLocalAvg;
+            float lumaEnd2 = getLuma(texture2D(tDiffuse, uv2).rgb) - lumaLocalAvg;
+            bool reached1 = abs(lumaEnd1) >= gradScaled;
+            bool reached2 = abs(lumaEnd2) >= gradScaled;
+
+            // 5-step edge tangent search for smooth diagonal silhouettes
+            for (int i = 0; i < 5; i++) {
+              if (!reached1) {
+                uv1 -= offset * (i < 2 ? 1.0 : 1.5);
+                lumaEnd1 = getLuma(texture2D(tDiffuse, uv1).rgb) - lumaLocalAvg;
+                reached1 = abs(lumaEnd1) >= gradScaled;
+              }
+              if (!reached2) {
+                uv2 += offset * (i < 2 ? 1.0 : 1.5);
+                lumaEnd2 = getLuma(texture2D(tDiffuse, uv2).rgb) - lumaLocalAvg;
+                reached2 = abs(lumaEnd2) >= gradScaled;
+              }
+              if (reached1 && reached2) break;
+            }
+
+            float dist1 = isHoriz ? (vUv.x - uv1.x) : (vUv.y - uv1.y);
+            float dist2 = isHoriz ? (uv2.x - vUv.x) : (uv2.y - vUv.y);
+            bool isDir1 = dist1 < dist2;
+            float distFinal = min(dist1, dist2);
+            float edgeThick = max(dist1 + dist2, 0.0001);
+            float pixelOff = -distFinal / edgeThick + 0.5;
+
+            bool isLumaMSmaller = lumaM < lumaLocalAvg;
+            bool correctVar = ((isDir1 ? lumaEnd1 : lumaEnd2) < 0.0) != isLumaMSmaller;
+            float finalOff = correctVar ? pixelOff : 0.0;
+            finalOff = max(finalOff, subpixBlend);
+
+            vec2 aaUv = vUv;
+            if (isHoriz) aaUv.y += finalOff * stepLen;
+            else         aaUv.x += finalOff * stepLen;
+
+            vec3 aaRgb = texture2D(tDiffuse, clamp(aaUv, 0.001, 0.999)).rgb;
+            float blendW = smoothstep(0.0, 0.22, maxMask) * uFxaaStrength;
+            finalRgb = mix(colM, aaRgb, blendW);
+          }
+        }
+
+        // Subtle 1/255 animated hash dither eliminates dark-sky banding
+        float dither = (hash12(gl_FragCoord.xy + fract(uTime * 1.618) * 257.0) - 0.5) / 255.0 * 1.6;
+        finalRgb = clamp(finalRgb + dither, 0.0, 1.0);
+
+        gl_FragColor = vec4(finalRgb, 1.0);
+      }
+    `;
+
+    // ============================================================================
+    // 3. ULTRA-Q ROUND-HEAD 3D CHIBI ROCKET BUILDER (DESIGNER VINYL TOY FINISH)
+    // ============================================================================
+    function buildChibiRocket3D(disposables) {
+      const root = new THREE.Group();
+
+      // Tactile matte-satin designer-toy materials (soft plush highlights, never harsh)
+      const bodyMat = new THREE.MeshPhysicalMaterial({
+        color: 0xFBF5EA, // Warm milky-cream chubby belly
+        roughness: 0.40,
+        metalness: 0.03,
+        clearcoat: 0.32,
+        clearcoatRoughness: 0.28,
+      });
+
+      const coralMat = new THREE.MeshPhysicalMaterial({
+        color: 0xF2645E, // Smooth flush coral-red glossy-satin
+        roughness: 0.38,
+        metalness: 0.03,
+        clearcoat: 0.36,
+        clearcoatRoughness: 0.26,
+      });
+
+      const goldMat = new THREE.MeshPhysicalMaterial({
+        color: 0xECC368, // Plump warm honey-gold
+        roughness: 0.30,
+        metalness: 0.58,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.22,
+      });
+
+      // Helper for C1-continuous chubby capsule-pear belly Bezier (y: -0.68 -> +0.4267)
+      // Joins smoothly into a PURE hemispherical dome cap (center y = 0.35, R = 0.55, apex y = +0.90)
+      const R_HEAD = 0.55;
+      const Y_HEAD_CENTER = 0.35;
+      const PHI_JOIN = 0.14; // 8 deg above dome equator for effortless C1 pear transition
+      const R_JOIN = R_HEAD * Math.cos(PHI_JOIN); // 0.5446
+      const Y_JOIN = Y_HEAD_CENTER + R_HEAD * Math.sin(PHI_JOIN); // 0.4267
+
+      const B0 = new THREE.Vector2(0.275, -0.68);
+      const B1 = new THREE.Vector2(0.615, -0.57);
+      const B2 = new THREE.Vector2(0.598,  0.0467); // Exact C1 tangent match (-tan(0.14)) into dome!
+      const B3 = new THREE.Vector2(R_JOIN, Y_JOIN);
+
+      function evalBellyBezier(t) {
+        const mt = 1 - t;
+        const mt2 = mt * mt;
+        const t2 = t * t;
+        const a = mt2 * mt;
+        const b = 3 * mt2 * t;
+        const c = 3 * mt * t2;
+        const d = t2 * t;
+        return new THREE.Vector2(
+          a * B0.x + b * B1.x + c * B2.x + d * B3.x,
+          a * B0.y + b * B1.y + c * B2.y + d * B3.y
+        );
+      }
+
+      // 1) Milky-Cream Chubby Capsule-Pear Belly (96 radial segments, 42 smooth curve points)
+      const bellyPts = [new THREE.Vector2(0.0, -0.68)];
+      const bellySteps = 42;
+      for (let i = 0; i <= bellySteps; i++) {
+        bellyPts.push(evalBellyBezier(i / bellySteps));
+      }
+      const bellyGeo = new THREE.LatheGeometry(bellyPts, 96);
+      const bellyMesh = new THREE.Mesh(bellyGeo, bodyMat);
+      root.add(bellyMesh);
+      disposables.push(bellyGeo, bodyMat);
+
+      // 2) Pure Hemispherical Rounded Coral-Red Dome Head (NO pointy cone, NO finial, NO antenna!)
+      //    96 radial segments x 30 spherical-cap profile points (>64 total smooth profile points)
+      const domePts = [];
+      const domeSteps = 30;
+      for (let i = 0; i <= domeSteps; i++) {
+        const phi = PHI_JOIN + (i / domeSteps) * (Math.PI * 0.5 - PHI_JOIN);
+        const r = i === domeSteps ? 0.0 : R_HEAD * Math.cos(phi) + 0.0025;
+        const y = Y_HEAD_CENTER + R_HEAD * Math.sin(phi);
+        domePts.push(new THREE.Vector2(r, y));
+      }
+      const domeGeo = new THREE.LatheGeometry(domePts, 96);
+      const domeMesh = new THREE.Mesh(domeGeo, coralMat);
+      root.add(domeMesh);
+      disposables.push(domeGeo, coralMat);
+
+      // 3) Plump Smooth Honey-Gold Collar Ring at Dome/Belly Seam
+      const collarGeo = new THREE.TorusGeometry(R_JOIN + 0.009, 0.028, 24, 96);
+      collarGeo.rotateX(Math.PI * 0.5);
+      const collarMesh = new THREE.Mesh(collarGeo, goldMat);
+      collarMesh.position.y = Y_JOIN;
+      root.add(collarMesh);
+
+      // Short Chunky Honey-Gold Tail Collar
+      const tailCollarGeo = new THREE.TorusGeometry(0.292, 0.030, 20, 72);
+      tailCollarGeo.rotateX(Math.PI * 0.5);
+      const tailCollarMesh = new THREE.Mesh(tailCollarGeo, goldMat);
+      tailCollarMesh.position.y = -0.665;
+      root.add(tailCollarMesh);
+      disposables.push(goldMat, collarGeo, tailCollarGeo);
+
+      // 4) Oversized Adorable Round Porthole Window (Centered Slightly Upper-Front on Chubby Belly)
+      const portholeGroup = new THREE.Group();
+      portholeGroup.position.set(0, 0.05, 0.562);
+      portholeGroup.rotation.x = -0.05;
+
+      // Thick smooth honey-gold bezel (32x64 segments)
+      const bezelGeo = new THREE.TorusGeometry(0.242, 0.048, 32, 64);
+      const bezelMesh = new THREE.Mesh(bezelGeo, goldMat);
+      portholeGroup.add(bezelMesh);
+
+      // 8 tiny spherical gold rivets nestled symmetrically around the rim
+      const rivetGeo = new THREE.SphereGeometry(0.017, 16, 12);
+      for (let i = 0; i < 8; i++) {
+        const a = (i * Math.PI * 2) / 8 + Math.PI / 8;
+        const rivet = new THREE.Mesh(rivetGeo, goldMat);
+        rivet.position.set(Math.cos(a) * 0.242, Math.sin(a) * 0.242, 0.044);
+        portholeGroup.add(rivet);
+      }
+
+      // Recessed deep-navy cozy cabin interior
+      const cabinGeo = new THREE.SphereGeometry(0.228, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.55);
+      cabinGeo.rotateX(-Math.PI * 0.5);
+      cabinGeo.scale(1, 1, 0.52);
+      const cabinMat = new THREE.MeshStandardMaterial({
+        color: 0x0B1A44,
+        emissive: 0x0A1B4D,
+        emissiveIntensity: 0.60,
+        roughness: 0.52,
+        metalness: 0.08,
+        side: THREE.BackSide,
+      });
+      const cabinMesh = new THREE.Mesh(cabinGeo, cabinMat);
+      cabinMesh.position.z = 0.004;
+      portholeGroup.add(cabinMesh);
+
+      // Chubby, smooth-beveled 3D glowing pastel-gold 4-point star gently floating inside
+      const starShape = new THREE.Shape();
+      const sOut = 0.100;
+      const sIn = 0.042; // Chubbier inner waist for adorable plush star shape
+      for (let i = 0; i < 8; i++) {
+        const ang = (i * Math.PI) / 4;
+        const rad = i % 2 === 0 ? sOut : sIn;
+        const sx = Math.cos(ang) * rad;
+        const sy = Math.sin(ang) * rad;
+        if (i === 0) starShape.moveTo(sx, sy);
+        else starShape.lineTo(sx, sy);
+      }
+      starShape.closePath();
+
+      const cabinStarGeo = new THREE.ExtrudeGeometry(starShape, {
+        depth: 0.026,
+        bevelEnabled: true,
+        bevelThickness: 0.016,
+        bevelSize: 0.014,
+        bevelSegments: 6,
+      });
+      cabinStarGeo.center();
+      const cabinStarMat = new THREE.MeshStandardMaterial({
+        color: 0xFFF5CC,
+        emissive: 0xFFDC78,
+        emissiveIntensity: 1.40,
+        roughness: 0.24,
+        metalness: 0.15,
+      });
+      const cabinStarMesh = new THREE.Mesh(cabinStarGeo, cabinStarMat);
+      cabinStarMesh.position.set(0.0, 0.0, 0.022);
+      portholeGroup.add(cabinStarMesh);
+
+      // Gently domed crystal-clear sky-blue glass lens with soft specular reflection      const glassGeo = new THREE.SphereGeometry(0.228, 36, 22, 0, Math.PI * 2, 0, Math.PI * 0.46);
+      glassGeo.rotateX(Math.PI * 0.5);
+      glassGeo.scale(1, 1, 0.42);
+      const glassMat = new THREE.MeshPhysicalMaterial({
+        color: 0x9CD9FF,
+        emissive: 0x1E5494,
+        emissiveIntensity: 0.20,
+        roughness: 0.06,
+        metalness: 0.02,
+        transparent: true,
+        opacity: 0.34,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05,
+        reflectivity: 0.92,
+        depthWrite: false,
+      });
+      const glassMesh = new THREE.Mesh(glassGeo, glassMat);
+      glassMesh.position.z = 0.014;
+      portholeGroup.add(glassMesh);
+
+      // Soft curved specular glint & tiny secondary dot on glass dome
+      const glintGeo = new THREE.SphereGeometry(0.036, 16, 12);
+      glintGeo.scale(1.45, 0.68, 0.32);
+      const glintMat = new THREE.MeshBasicMaterial({
+        color: 0xFFFFFF,
+        transparent: true,
+        opacity: 0.80,
+        depthWrite: false,
+      });
+      const glintMesh = new THREE.Mesh(glintGeo, glintMat);
+      glintMesh.position.set(-0.095, 0.088, 0.088);
+      glintMesh.rotation.z = 0.62;
+      portholeGroup.add(glintMesh);
+
+      const glintDotGeo = new THREE.SphereGeometry(0.015, 12, 10);
+      const glintDot = new THREE.Mesh(glintDotGeo, glintMat);
+      glintDot.position.set(-0.135, 0.036, 0.072);
+      portholeGroup.add(glintDot);
+
+      root.add(portholeGroup);
+      disposables.push(bezelGeo, rivetGeo, cabinGeo, cabinMat, cabinStarGeo, cabinStarMat, glassGeo, glassMat, glintGeo, glintMat, glintDotGeo);
+
+      // 5) Cute Rosy Blush Cheeks: Two Subtle Pastel Peach-Pink Smooth Oval Patches
+      //    Symmetrically hugging the curved cream belly just below-left & below-right of porthole
+      const blushGeo = new THREE.SphereGeometry(0.068, 24, 16);
+      blushGeo.scale(1.28, 0.72, 0.16);
+      const blushMat = new THREE.MeshPhysicalMaterial({
+        color: 0xFF9EA6,
+        emissive: 0xFF7B89,
+        emissiveIntensity: 0.14,
+        roughness: 0.58,
+        metalness: 0.0,
+        clearcoat: 0.18,
+        clearcoatRoughness: 0.40,
+        transparent: true,
+        opacity: 0.76,
+      });
+      // Sample belly surface at t = 0.54 (just below porthole) for exact curvature hug
+      const cheekPt = evalBellyBezier(0.54);
+      const cheekNext = evalBellyBezier(0.56);
+      const cheekSlope = Math.atan2(cheekPt.x - cheekNext.x, cheekNext.y - cheekPt.y);
+      [-1, 1].forEach((side) => {
+        const az = side * 0.54; // ~31 deg left & right of front +Z
+        const rSurf = cheekPt.x + 0.002;
+        const cheek = new THREE.Mesh(blushGeo, blushMat);
+        cheek.position.set(Math.sin(az) * rSurf, cheekPt.y, Math.cos(az) * rSurf);
+        cheek.rotation.order = 'YXZ';
+        cheek.rotation.y = az;
+        cheek.rotation.x = cheekSlope;
+        cheek.rotation.z = -side * 0.12;
+        root.add(cheek);
+      });
+      disposables.push(blushGeo, blushMat);
+
+      // 6) Three Plump, Chubby, Stubby Dolphin-Flipper Fins at 120° Around Lower Belly
+      //    Generous thick smooth bevels (curveSegments: 36, bevelSegments: 14) for pillowy huggable feel
+      const finShape = new THREE.Shape();
+      finShape.moveTo(0.32, -0.14);
+      finShape.bezierCurveTo(0.65, -0.17, 0.88, -0.39, 0.84, -0.66);
+      finShape.bezierCurveTo(0.81, -0.82, 0.64, -0.86, 0.52, -0.78);
+      finShape.bezierCurveTo(0.41, -0.70, 0.33, -0.60, 0.22, -0.56);
+      finShape.lineTo(0.22, -0.16);
+      finShape.closePath();
+
+      const finGeo = new THREE.ExtrudeGeometry(finShape, {
+        depth: 0.044,
+        bevelEnabled: true,
+        bevelThickness: 0.082,
+        bevelSize: 0.070,
+        bevelSegments: 14,
+        curveSegments: 36,
+      });
+      finGeo.translate(0, 0, -0.022);
+
+      const finAngles = [
+        Math.PI * 0.5,                     // Back (-Z)
+        Math.PI * 0.5 - (Math.PI * 2) / 3, // Front-Right
+        Math.PI * 0.5 + (Math.PI * 2) / 3, // Front-Left
+      ];
+      finAngles.forEach((ang) => {
+        const finMesh = new THREE.Mesh(finGeo, coralMat);
+        finMesh.rotation.y = ang;
+        root.add(finMesh);
+      });
+      disposables.push(finGeo);
+
+      // 7) Compact Rounded Metallic Nozzle (Warm Charcoal-Slate) + Soft Amber-Peach Inner Core
+      const nozzlePts = [
+        new THREE.Vector2(0.19, -0.66),
+        new THREE.Vector2(0.22, -0.69),
+        new THREE.Vector2(0.275, -0.80),
+        new THREE.Vector2(0.285, -0.855),
+        new THREE.Vector2(0.268, -0.885),
+        new THREE.Vector2(0.235, -0.885),
+        new THREE.Vector2(0.185, -0.74),
+      ];
+      const nozzleGeo = new THREE.LatheGeometry(nozzlePts, 64);
+      const nozzleMat = new THREE.MeshPhysicalMaterial({
+        color: 0x454E63,
+        metalness: 0.62,
+        roughness: 0.34,
+        clearcoat: 0.25,
+        clearcoatRoughness: 0.30,
+      });
+      const nozzleMesh = new THREE.Mesh(nozzleGeo, nozzleMat);
+      root.add(nozzleMesh);
+
+      const emberGeo = new THREE.CircleGeometry(0.215, 36);
+      emberGeo.rotateX(Math.PI * 0.5);
+      const emberMat = new THREE.MeshBasicMaterial({
+        color: 0xFFC27A,
+        side: THREE.DoubleSide,
+      });
+      const emberMesh = new THREE.Mesh(emberGeo, emberMat);
+      emberMesh.position.y = -0.785;
+      root.add(emberMesh);
+      disposables.push(nozzleGeo, nozzleMat, emberGeo, emberMat);
+
+      // 8) Smooth Chubby Teardrop Dual-Layer 3D Animated GLSL Flame
+      //    Uses alpha-preserving CustomBlending so sceneRT.a stays a pure rocket silhouette mask!
+      function createChubbyFlameLathe(maxR, length) {
+        const pts = [];
+        const segs = 24;
+        for (let i = 0; i <= segs; i++) {
+          const t = i / segs;
+          const y = -t * length;
+          // Plump rounded teardrop curve
+          const r = maxR * Math.sin(Math.pow(t, 0.56) * Math.PI);
+          pts.push(new THREE.Vector2(Math.max(0.0, r), y));
+        }
+        return new THREE.LatheGeometry(pts, 48);
+      }
+
+      const outerFlameGeo = createChubbyFlameLathe(0.255, 0.80);
+      const outerFlameUniforms = {
+        uTime: { value: 0 },
+        uFlamePower: { value: 0.25 },
+        uFlameStretch: { value: 0.82 },
+        uPhaseOffset: { value: 0.0 },
+        uColorTop: { value: new THREE.Color('#FFAA64') },
+        uColorTip: { value: new THREE.Color('#F25B4E') },
+        uOpacityScale: { value: 0.92 },
+      };
+      const outerFlameMat = new THREE.ShaderMaterial({
+        vertexShader: FLAME_VERT,
+        fragmentShader: FLAME_FRAG,
+        uniforms: outerFlameUniforms,
+        transparent: true,
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneFactor,
+        blendEquationAlpha: THREE.AddEquation,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const outerFlameMesh = new THREE.Mesh(outerFlameGeo, outerFlameMat);
+      outerFlameMesh.position.y = -0.80;
+      root.add(outerFlameMesh);
+
+      const innerFlameGeo = createChubbyFlameLathe(0.155, 0.55);
+      const innerFlameUniforms = {
+        uTime: { value: 0 },
+        uFlamePower: { value: 0.25 },
+        uFlameStretch: { value: 0.78 },
+        uPhaseOffset: { value: 2.4 },
+        uColorTop: { value: new THREE.Color('#FFFCE0') },
+        uColorTip: { value: new THREE.Color('#FFD466') },
+        uOpacityScale: { value: 1.25 },
+      };
+      const innerFlameMat = new THREE.ShaderMaterial({
+        vertexShader: FLAME_VERT,
+        fragmentShader: FLAME_FRAG,
+        uniforms: innerFlameUniforms,
+        transparent: true,
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneFactor,
+        blendEquationAlpha: THREE.AddEquation,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const innerFlameMesh = new THREE.Mesh(innerFlameGeo, innerFlameMat);
+      innerFlameMesh.position.y = -0.79;
+      root.add(innerFlameMesh);
+      disposables.push(outerFlameGeo, outerFlameMat, innerFlameGeo, innerFlameMat);
+
+      // 9) Flickering Warm PointLight Under Nozzle (Illuminates Chubby Belly & Fins Underside)
+      const nozzleLight = new THREE.PointLight(0xFF9F5A, 1.2, 5.5, 2.0);
+      nozzleLight.position.set(0, -1.04, 0.16);
+      root.add(nozzleLight);
+
+      // 10) Invisible Generous Hit-Sphere for Effortless THREE.Raycaster Click & Hover
+      const hitGeo = new THREE.SphereGeometry(1.18, 16, 12);
+      const hitMat = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0.0,
+        colorWrite: false,
+        depthWrite: false,
+      });
+      const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+      hitMesh.position.y = 0.06;
+      root.add(hitMesh);
+      disposables.push(hitGeo, hitMat);
+
+      return {
+        root,
+        hitMesh,
+        cabinStarMesh,
+        nozzleLight,
+        emberMat,
+        outerFlameUniforms,
+        innerFlameUniforms,
+      };
+    }
+
+    // ============================================================================
+    // 4. 3D STARLIGHT EXHAUST PUFFS & SPARKLES POOL (IN rocketScene)
+    // ============================================================================
+    class ExhaustParticlePool3D {
+      constructor(maxCount, scene, disposables) {
+        this.maxCount = maxCount;
+        this.cursor = 0;
+
+        this.positions = new Float32Array(maxCount * 3);
+        this.sizes = new Float32Array(maxCount);
+        this.alphas = new Float32Array(maxCount);
+        this.types = new Float32Array(maxCount);
+        this.rots = new Float32Array(maxCount);
+        this.colors = new Float32Array(maxCount * 3);
+
+        this.particles = [];
+        for (let i = 0; i < maxCount; i++) {
+          this.particles.push({
+            alive: false,
+            px: 0, py: 0, pz: 0,
+            vx: 0, vy: 0, vz: 0,
+            age: 0, life: 1,
+            startSize: 0.2, endSize: 0.5,
+            type: 0,
+            rot: 0, vRot: 0,
+            r: 1, g: 1, b: 1,
+          });
+        }
+
+        const geo = new THREE.BufferGeometry();
+        this.posAttr = new THREE.BufferAttribute(this.positions, 3);
+        this.sizeAttr = new THREE.BufferAttribute(this.sizes, 1);
+        this.alphaAttr = new THREE.BufferAttribute(this.alphas, 1);
+        this.typeAttr = new THREE.BufferAttribute(this.types, 1);
+        this.rotAttr = new THREE.BufferAttribute(this.rots, 1);
+        this.colorAttr = new THREE.BufferAttribute(this.colors, 3);
+
+        geo.setAttribute('position', this.posAttr);
+        geo.setAttribute('aSize', this.sizeAttr);
+        geo.setAttribute('aAlpha', this.alphaAttr);
+        geo.setAttribute('aType', this.typeAttr);
+        geo.setAttribute('aRot', this.rotAttr);
+        geo.setAttribute('aColor', this.colorAttr);
+
+        this.uniforms = {
+          uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
+          uProjScale: { value: 600 },
+        };
+
+        const mat = new THREE.ShaderMaterial({
+          vertexShader: EXHAUST_PARTICLE_VERT,
+          fragmentShader: EXHAUST_PARTICLE_FRAG,
+          uniforms: this.uniforms,
+          transparent: true,
+          blending: THREE.CustomBlending,
+          blendEquation: THREE.AddEquation,
+          blendSrc: THREE.SrcAlphaFactor,
+          blendDst: THREE.OneFactor,
+          blendEquationAlpha: THREE.AddEquation,
+          blendSrcAlpha: THREE.ZeroFactor,
+          blendDstAlpha: THREE.OneFactor,
+          depthWrite: false,
+          depthTest: true,
+        });
+
+        this.points = new THREE.Points(geo, mat);
+        this.points.frustumCulled = false;
+        this.points.renderOrder = 30;
+        scene.add(this.points);
+        disposables.push(geo, mat);
+      }
+
+      spawn(opts) {
+        const p = this.particles[this.cursor];
+        this.cursor = (this.cursor + 1) % this.maxCount;
+        p.alive = true;
+        p.px = opts.x; p.py = opts.y; p.pz = opts.z;
+        p.vx = opts.vx; p.vy = opts.vy; p.vz = opts.vz;
+        p.age = 0;
+        p.life = opts.life;
+        p.startSize = opts.startSize;
+        p.endSize = opts.endSize;
+        p.type = opts.type;
+        p.rot = Math.random() * Math.PI * 2;
+        p.vRot = (Math.random() - 0.5) * 4.5;
+        p.r = opts.color.r;
+        p.g = opts.color.g;
+        p.b = opts.color.b;
+      }
+
+      update(dt, viewportHeight, fovDeg, dpr) {
+        const projScale = viewportHeight / (2.0 * Math.tan(THREE.MathUtils.degToRad(fovDeg * 0.5)));
+        this.uniforms.uProjScale.value = projScale;
+        this.uniforms.uPixelRatio.value = dpr;
+
+        let anyAlive = false;
+        const damp = Math.exp(-dt * 2.2);
+
+        for (let i = 0; i < this.maxCount; i++) {
+          const p = this.particles[i];
+          if (!p.alive) {
+            this.alphas[i] = 0;
+            continue;
+          }
+
+          p.age += dt;
+          if (p.age >= p.life) {
+            p.alive = false;
+            this.alphas[i] = 0;
+            continue;
+          }
+
+          anyAlive = true;
+          const t = p.age / p.life;
+          p.px += p.vx * dt;
+          p.py += p.vy * dt;
+          p.pz += p.vz * dt;
+          p.vx *= damp;
+          p.vy *= damp;
+          p.vz *= damp;
+          p.rot += p.vRot * dt;
+
+          const size = p.startSize + (p.endSize - p.startSize) * (1.0 - Math.pow(1.0 - t, 2.0));
+          let alpha;
+          if (p.type < 0.5) {
+            // Soft cloud puff fade
+            alpha = Math.sin(Math.min(1.0, t * 5.0) * Math.PI * 0.5) * Math.pow(1.0 - t, 1.8) * 0.62;
+          } else {
+            // Twinkling sparkle pop & fade
+            const pop = t < 0.16 ? (t / 0.16) : (1.0 - (t - 0.16) / 0.84);
+            const tw = 0.72 + 0.28 * Math.sin(p.age * 24.0 + i);
+            alpha = Math.max(0.0, pop) * tw * 0.95;
+          }
+
+          this.positions[i * 3 + 0] = p.px;
+          this.positions[i * 3 + 1] = p.py;
+          this.positions[i * 3 + 2] = p.pz;
+          this.sizes[i] = size;
+          this.alphas[i] = alpha;
+          this.types[i] = p.type;
+          this.rots[i] = p.rot;
+          this.colors[i * 3 + 0] = p.r;
+          this.colors[i * 3 + 1] = p.g;
+          this.colors[i * 3 + 2] = p.b;
+        }
+
+        this.points.visible = anyAlive;
+        if (anyAlive) {
+          this.posAttr.needsUpdate = true;
+          this.sizeAttr.needsUpdate = true;
+          this.alphaAttr.needsUpdate = true;
+          this.typeAttr.needsUpdate = true;
+          this.rotAttr.needsUpdate = true;
+          this.colorAttr.needsUpdate = true;
+        }
+      }
+    }
+
+    // ============================================================================
+    // 5. GEOMETRY & SPECTRAL DISTRIBUTION HELPERS
+    // ============================================================================
+    function writeSpectralWeights(arr, idx, bias = [0.36, 0.34, 0.19, 0.11]) {
+      const r = Math.random();
+      let primary = 0;
+      if (r < bias[0]) primary = 0;
+      else if (r < bias[0] + bias[1]) primary = 1;
+      else if (r < bias[0] + bias[1] + bias[2]) primary = 2;
+      else primary = 3;
+
+      const secondary = (primary + (Math.random() < 0.5 ? 1 : 3)) % 4;
+      const blend = 0.76 + Math.random() * 0.24;
+
+      const w = [0, 0, 0, 0];
+      w[primary] = blend;
+      w[secondary] = 1.0 - blend;
+
+      arr[idx * 4 + 0] = w[0];
+      arr[idx * 4 + 1] = w[1];
+      arr[idx * 4 + 2] = w[2];
+      arr[idx * 4 + 3] = w[3];
+    }
+
+    function createCleanInstancedQuadGeometry(instanceCount) {
+      const geo = new THREE.InstancedBufferGeometry();
+      const positions = new Float32Array([
+        -0.5, -0.5, 0.0,
+         0.5, -0.5, 0.0,
+         0.5,  0.5, 0.0,
+        -0.5,  0.5, 0.0,
+      ]);
+      const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setIndex(new THREE.BufferAttribute(indices, 1));
+      geo.instanceCount = instanceCount;
+      return geo;
+    }
+
+    function evalCubicBezier3D(p0, p1, p2, p3, t, out) {
+      const mt = 1 - t;
+      const mt2 = mt * mt;
+      const t2 = t * t;
+      const a = mt2 * mt;
+      const b = 3 * mt2 * t;
+      const c = 3 * mt * t2;
+      const d = t2 * t;
+      out.set(
+        a * p0.x + b * p1.x + c * p2.x + d * p3.x,
+        a * p0.y + b * p1.y + c * p2.y + d * p3.y,
+        a * p0.z + b * p1.z + c * p2.z + d * p3.z
+      );
+      return out;
+    }
+
+    // ============================================================================
+    // 6. APPLICATION INITIALIZATION & 6-PASS HDR PIPELINE
+    // ============================================================================
+    function showError(msg) {
+      window.__ROCKET_WARP_ERROR__ = msg || 'WebGL initialization failed';
+      const overlay = document.getElementById('error-overlay');
+      const msgEl = document.getElementById('error-message');
+      if (msgEl && msg) msgEl.textContent = msg;
+      if (overlay) overlay.classList.remove('hidden');
+    }
+
+    function initApp() {
+      const canvas = document.getElementById('cosmos-canvas');
+      const testMode = window.__ROCKET_WARP_TEST_MODE__ === true;
+      const timeScale = testMode ? 0.12 : 1.0;
+      const qualityScale = testMode ? 0.22 : (window.innerWidth < 700 ? 0.62 : 1.0);
+      let renderer;
+
+      try {
+        renderer = new THREE.WebGLRenderer({
+          canvas,
+          antialias: false,
+          powerPreference: 'high-performance',
+          stencil: false,
+          depth: true,
+        });
+      } catch (err) {
+        showError('WebGL 上下文创建失败：' + (err?.message || '未知错误'));
+        return;
+      }
+
+      const getDPR = () => Math.min(window.devicePixelRatio || 1, testMode ? 1 : (window.innerWidth < 700 ? 1.35 : 2));
+      renderer.setPixelRatio(getDPR());
+      renderer.setSize(window.innerWidth, window.innerHeight, false);
+      renderer.autoClear = false;
+      renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+
+      const isWebGL2 = renderer.capabilities.isWebGL2;
+      const supportsHalfFloat = isWebGL2
+        ? Boolean(renderer.extensions.get('EXT_color_buffer_float') || renderer.extensions.get('EXT_color_buffer_half_float'))
+        : Boolean(renderer.extensions.get('EXT_color_buffer_half_float'));
+      const rtType = supportsHalfFloat ? THREE.HalfFloatType : THREE.UnsignedByteType;
+
+      // Detect true hardware 4x MSAA support for HalfFloat HDR render targets in WebGL2
+      let msaaSamples = 0;
+      if (isWebGL2 && supportsHalfFloat) {
+        try {
+          const gl = renderer.getContext();
+          const maxCap = Math.min(4, renderer.capabilities.maxSamples || 0);
+          if (maxCap >= 2) {
+            if (typeof gl.getInternalformatParameter === 'function') {
+              const supported = gl.getInternalformatParameter(gl.RENDERBUFFER, gl.RGBA16F, gl.SAMPLES);
+              if (supported && supported.length > 0) {
+                msaaSamples = Math.min(maxCap, supported[0]);
+              }
+            } else {
+              msaaSamples = maxCap;
+            }
+          }
+        } catch (_err) {
+          msaaSamples = 0;
+        }
+      }
+
+      function createRT(w, h, withDepth = false, samples = 0, typeOverride = rtType) {
+        return new THREE.WebGLRenderTarget(Math.max(1, w), Math.max(1, h), {
+          type: typeOverride,
+          format: THREE.RGBAFormat,
+          minFilter: THREE.LinearFilter,
+          magFilter: THREE.LinearFilter,
+          wrapS: THREE.ClampToEdgeWrapping,
+          wrapT: THREE.ClampToEdgeWrapping,
+          depthBuffer: withDepth,
+          stencilBuffer: false,
+          samples,
+        });
+      }
+
+      const initW = Math.max(1, Math.floor(window.innerWidth * getDPR()));
+      const initH = Math.max(1, Math.floor(window.innerHeight * getDPR()));
+
+      const spaceRT = createRT(initW, initH, false, 0);
+      // Main HDR scene target with hardware 4x MSAA + depth buffer for buttery-smooth 3D rocket edges!
+      const sceneRT = createRT(initW, initH, true, msaaSamples);
+      const tonemapRT = createRT(initW, initH, false, 0, THREE.UnsignedByteType);
+      const brightRT = createRT(Math.floor(initW * 0.5), Math.floor(initH * 0.5), false, 0);
+      const bloomHalfA = createRT(Math.floor(initW * 0.5), Math.floor(initH * 0.5), false, 0);
+      const bloomHalfB = createRT(Math.floor(initW * 0.5), Math.floor(initH * 0.5), false, 0);
+      const bloomQuarterA = createRT(Math.floor(initW * 0.25), Math.floor(initH * 0.25), false, 0);
+      const bloomQuarterB = createRT(Math.floor(initW * 0.25), Math.floor(initH * 0.25), false, 0);
+
+      const disposables = [spaceRT, sceneRT, tonemapRT, brightRT, bloomHalfA, bloomHalfB, bloomQuarterA, bloomQuarterB];
+
+      // --------------------------------------------------------------------------
+      // Shared Perspective Camera (Used by both spaceScene & rocketScene!)
+      // --------------------------------------------------------------------------
+      const BASE_FOV = 54;
+      const CHARGE_FOV = 45;
+      const BH_ANCHOR = new THREE.Vector3(0, 0.25, -14.5);
+
+      const camera = new THREE.PerspectiveCamera(BASE_FOV, window.innerWidth / Math.max(window.innerHeight, 1), 0.1, 1000);
+      camera.position.set(0, 0, 0);
+
+      const resolutionVec = new THREE.Vector2(initW, initH);
+      const vanishingUvVec = new THREE.Vector2(0.5, 0.5);
+      const blackHoleUvVec = new THREE.Vector2(0.5, 0.5);
+
+      // --------------------------------------------------------------------------
+      // SCENE 1: spaceScene (Nebula Dome + Veil + 3 Continuous Dynamic SDF Star Layers)
+      // --------------------------------------------------------------------------
+      const spaceScene = new THREE.Scene();
+
+      const backdropUniforms = {
+        uTime: { value: 0 },
+        uDrift: { value: 0 },
+        uFlow: { value: 0 },
+        uWarp: { value: 0 },
+        uVeilOpacity: { value: 0 },
+        uAspect: { value: window.innerWidth / Math.max(window.innerHeight, 1) },
+        uTanHalfFov: { value: Math.tan(THREE.MathUtils.degToRad(BASE_FOV * 0.5)) },
+        uVanishingOffset: { value: new THREE.Vector2(0, 0) },
+        uCamRight: { value: new THREE.Vector3(1, 0, 0) },
+        uCamUp: { value: new THREE.Vector3(0, 1, 0) },
+        uCamForward: { value: new THREE.Vector3(0, 0, -1) },
+        uSkyDeep: { value: liveColors.skyDeep },
+        uSkyMid: { value: liveColors.skyMid },
+        uNebulaA: { value: liveColors.nebulaA },
+        uNebulaB: { value: liveColors.nebulaB },
+        uVeilA: { value: liveColors.veilA },
+        uVeilB: { value: liveColors.veilB },
+        uVpGlow: { value: liveColors.vpGlow },
+      };
+
+      const backdropGeo = new THREE.PlaneGeometry(2, 2);
+      const backdropMat = new THREE.ShaderMaterial({
+        vertexShader: FULLSCREEN_VERT,
+        fragmentShader: COSMOS_BACKDROP_FRAG,
+        uniforms: backdropUniforms,
+        side: THREE.DoubleSide,
+        depthTest: false,
+        depthWrite: false,
+      });
+      const backdropMesh = new THREE.Mesh(backdropGeo, backdropMat);
+      backdropMesh.frustumCulled = false;
+      backdropMesh.renderOrder = -100;
+      spaceScene.add(backdropMesh);
+      disposables.push(backdropGeo, backdropMat);
+
+      function createCapsuleStarLayer({ count, zMin, zMax, layerMode, swirlRate, renderOrder, populate }) {
+        const geo = createCleanInstancedQuadGeometry(count);
+        const cylPos = new Float32Array(count * 3);
+        const meta = new Float32Array(count * 4);
+        const flags = new Float32Array(count * 4);
+        const weights = new Float32Array(count * 4);
+
+        populate(cylPos, meta, flags, weights, count, zMax - zMin);
+
+        geo.setAttribute('aCylPos', new THREE.InstancedBufferAttribute(cylPos, 3));
+        geo.setAttribute('aMeta', new THREE.InstancedBufferAttribute(meta, 4));
+        geo.setAttribute('aFlags', new THREE.InstancedBufferAttribute(flags, 4));
+        geo.setAttribute('aColorWeights', new THREE.InstancedBufferAttribute(weights, 4));
+
+        const uniforms = {
+          uTime: { value: 0 },
+          uTravelDist: { value: 0 },
+          uZMin: { value: zMin },
+          uZMax: { value: zMax },
+          uStretchWorld: { value: 0 },
+          uWarpMix: { value: 0 },
+          uCharge: { value: 0 },
+          uDensityCutoff: { value: 1.0 },
+          uLayerMode: { value: layerMode },
+          uSwirlRate: { value: swirlRate },
+          uPixelRatio: { value: getDPR() },
+          uResolution: { value: resolutionVec },
+          uVanishingUv: { value: vanishingUvVec },
+          uAspect: { value: window.innerWidth / Math.max(window.innerHeight, 1) },
+          uStar0: { value: liveColors.star0 },
+          uStar1: { value: liveColors.star1 },
+          uStar2: { value: liveColors.star2 },
+          uStar3: { value: liveColors.star3 },
+          uHeadTint: { value: liveColors.headTint },
+        };
+
+        const mat = new THREE.ShaderMaterial({
+          vertexShader: CAPSULE_STAR_VERT,
+          fragmentShader: CAPSULE_STAR_FRAG,
+          uniforms,
+          side: THREE.DoubleSide,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthTest: false,
+          depthWrite: false,
+        });
+
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.frustumCulled = false;
+        mesh.renderOrder = renderOrder;
+        spaceScene.add(mesh);
+        disposables.push(geo, mat);
+
+        return { mesh, uniforms };
+      }
+
+      // Layer 1: Deep Background Stars (3,600 instances, continuously flows at bgStarSpeed)
+      const layer1Deep = createCapsuleStarLayer({
+        count: Math.round(3600 * qualityScale),
+        zMin: -420,
+        zMax: -10,
+        layerMode: 0.0,
+        swirlRate: 0.0022,
+        renderOrder: -30,
+        populate(cylPos, meta, flags, weights, count, zSpan) {
+          for (let i = 0; i < count; i++) {
+            const zone = Math.random();
+            let radius;
+            if (zone < 0.28) radius = 0.8 + Math.pow(Math.random(), 0.72) * 58.0;
+            else if (zone < 0.68) radius = 58.0 + Math.pow(Math.random(), 0.85) * 195.0;
+            else radius = 253.0 + Math.pow(Math.random(), 0.90) * 340.0;
+
+            cylPos[i * 3 + 0] = radius;
+            cylPos[i * 3 + 1] = Math.random() * Math.PI * 2.0;
+            cylPos[i * 3 + 2] = Math.random() * zSpan;
+
+            const hasSpike = Math.random() < 0.11 ? 1.0 : 0.0;
+            meta[i * 4 + 0] = hasSpike > 0.5
+              ? (1.12 + Math.pow(Math.random(), 1.8) * 0.60)
+              : (0.65 + Math.pow(Math.random(), 2.5) * 0.58);
+            meta[i * 4 + 1] = 0.78 + Math.random() * 0.48;
+            meta[i * 4 + 2] = 0.55 + Math.random() * 0.85;
+            meta[i * 4 + 3] = Math.random();
+
+            flags[i * 4 + 0] = hasSpike;
+            flags[i * 4 + 1] = Math.random();
+            flags[i * 4 + 2] = hasSpike > 0.5
+              ? (0.76 + Math.random() * 0.34)
+              : (0.28 + Math.pow(Math.random(), 1.7) * 0.56);
+            flags[i * 4 + 3] = Math.random();
+
+            writeSpectralWeights(weights, i, [0.35, 0.34, 0.19, 0.12]);
+          }
+        },
+      });
+
+      // Layer 2: Main Star Stream (2,800 instances)
+      const layer2Main = createCapsuleStarLayer({
+        count: Math.round(2800 * qualityScale),
+        zMin: -280,
+        zMax: 0,
+        layerMode: 1.0,
+        swirlRate: 0.0045,
+        renderOrder: 10,
+        populate(cylPos, meta, flags, weights, count, zSpan) {
+          for (let i = 0; i < count; i++) {
+            cylPos[i * 3 + 0] = 0.25 + Math.pow(Math.random(), 0.76) * 96.0;
+            cylPos[i * 3 + 1] = Math.random() * Math.PI * 2.0;
+            cylPos[i * 3 + 2] = Math.random() * zSpan;
+
+            const hasSpike = Math.random() < 0.12 ? 1.0 : 0.0;
+            meta[i * 4 + 0] = hasSpike > 0.5
+              ? (1.26 + Math.pow(Math.random(), 1.7) * 0.52)
+              : (0.72 + Math.pow(Math.random(), 2.1) * 0.72);
+            meta[i * 4 + 1] = 0.72 + Math.random() * 0.83;
+            meta[i * 4 + 2] = 0.62 + Math.random() * 0.90;
+            meta[i * 4 + 3] = Math.random();
+
+            flags[i * 4 + 0] = hasSpike;
+            flags[i * 4 + 1] = i / count;
+            flags[i * 4 + 2] = hasSpike > 0.5
+              ? (0.85 + Math.random() * 0.30)
+              : (0.42 + Math.pow(Math.random(), 1.5) * 0.55);
+            flags[i * 4 + 3] = Math.random();
+
+            writeSpectralWeights(weights, i, [0.38, 0.33, 0.18, 0.11]);
+          }
+        },
+      });
+
+      // Layer 3: Peripheral Fast Streaks (320 instances, 2.1x outer zip speed)
+      const layer3Flyby = createCapsuleStarLayer({
+        count: Math.max(64, Math.round(320 * qualityScale)),
+        zMin: -240,
+        zMax: 0,
+        layerMode: 2.0,
+        swirlRate: 0.0065,
+        renderOrder: 20,
+        populate(cylPos, meta, flags, weights, count, zSpan) {
+          for (let i = 0; i < count; i++) {
+            cylPos[i * 3 + 0] = 14.0 + Math.pow(Math.random(), 0.85) * 44.0;
+            cylPos[i * 3 + 1] = Math.random() * Math.PI * 2.0;
+            cylPos[i * 3 + 2] = Math.random() * zSpan;
+
+            const hasSpike = Math.random() < 0.10 ? 1.0 : 0.0;
+            meta[i * 4 + 0] = 0.92 + Math.random() * 0.62;
+            meta[i * 4 + 1] = 1.85 + Math.random() * 0.50;
+            meta[i * 4 + 2] = 0.88 + Math.random() * 0.82;
+            meta[i * 4 + 3] = Math.random();
+
+            flags[i * 4 + 0] = hasSpike;
+            flags[i * 4 + 1] = Math.random();
+            flags[i * 4 + 2] = 0.62 + Math.random() * 0.40;
+            flags[i * 4 + 3] = Math.random();
+
+            writeSpectralWeights(weights, i, [0.40, 0.32, 0.16, 0.12]);
+          }
+        },
+      });
+
+      // --------------------------------------------------------------------------
+      // SCENE 2: rocketScene (3D Q-Rocket + 3-Point Lighting + 3D Sparkles + Portal Ring)
+      // --------------------------------------------------------------------------
+      const rocketScene = new THREE.Scene();
+
+      // Dedicated Soft 3-Point Vinyl-Toy Studio Lighting (soft lavender-cream shadow fill!)
+      const hemiLight = new THREE.HemisphereLight(0xDCEBFF, 0x7A668A, 1.15);
+      rocketScene.add(hemiLight);
+
+      const keyLight = new THREE.DirectionalLight(0xFFF6EB, 1.55);
+      keyLight.position.set(-4.2, 6.0, 5.8);
+      rocketScene.add(keyLight);
+
+      const rimLight = new THREE.DirectionalLight(0x78B8FF, 1.25);
+      rimLight.position.set(5.2, 2.8, -4.5);
+      rocketScene.add(rimLight);
+
+      // Build Procedural 3D Q-Version Chibi Rocket
+      const rocket = buildChibiRocket3D(disposables);
+      rocketScene.add(rocket.root);
+
+      // 3D Starlight Exhaust Puffs & Sparkles Pool (~160 particles)
+      const exhaustPool = new ExhaustParticlePool3D(160, rocketScene, disposables);
+
+      // 3D Glowing Starlight Return Portal Ring (Stage 5 Arrival)
+      const portalUniforms = {
+        uTime: { value: 0 },
+        uProgress: { value: 0 },
+        uColorA: { value: liveColors.bhDiskOuter },
+        uColorB: { value: liveColors.bhDiskInner },
+      };
+      const portalGeo = new THREE.PlaneGeometry(2, 2);
+      const portalMat = new THREE.ShaderMaterial({
+        vertexShader: PORTAL_RING_VERT,
+        fragmentShader: PORTAL_RING_FRAG,
+        uniforms: portalUniforms,
+        transparent: true,
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneFactor,
+        blendEquationAlpha: THREE.AddEquation,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const portalMesh = new THREE.Mesh(portalGeo, portalMat);
+      portalMesh.visible = false;
+      rocketScene.add(portalMesh);
+      disposables.push(portalGeo, portalMat);
+
+      // --------------------------------------------------------------------------
+      // Post-Processing Graph (Pure Three.js WebGLRenderTargets, Zero External Addons)
+      // --------------------------------------------------------------------------
+      const postScene = new THREE.Scene();
+      const postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      const postGeo = new THREE.PlaneGeometry(2, 2);
+
+      // Pass 2 Material: Gravitational Lensing Black Hole + Warp Ripples
+      const lensingBHUniforms = {
+        tSpace: { value: spaceRT.texture },
+        uBlackHoleUV: { value: blackHoleUvVec },
+        uVanishingUV: { value: vanishingUvVec },
+        uAspect: { value: window.innerWidth / Math.max(window.innerHeight, 1) },
+        uTime: { value: 0 },
+        uBlackHoleScale: { value: 0 },
+        uBlackHoleVis: { value: 0 },
+        uBlackHoleLens: { value: 0 },
+        uChargePulse: { value: 0 },
+        uAbsorbPulse: { value: 0 },
+        uDiskInner: { value: liveColors.bhDiskInner },
+        uDiskOuter: { value: liveColors.bhDiskOuter },
+        uRippleScale: { value: params.rippleStrength },
+        uRipple1: { value: new THREE.Vector2(0, 0) },
+        uRipple2: { value: new THREE.Vector2(0, 0) },
+        uAccentColor: { value: liveColors.veilB },
+      };
+      const lensingBHMat = new THREE.ShaderMaterial({
+        vertexShader: FULLSCREEN_VERT,
+        fragmentShader: LENSING_BLACKHOLE_FRAG,
+        uniforms: lensingBHUniforms,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      // Pass 4 Material: Bright Extract
+      const brightMat = new THREE.ShaderMaterial({
+        vertexShader: FULLSCREEN_VERT,
+        fragmentShader: BRIGHT_EXTRACT_FRAG,
+        uniforms: {
+          tDiffuse: { value: sceneRT.texture },
+          uThreshold: { value: supportsHalfFloat ? 0.90 : 0.72 },
+          uSoftKnee: { value: 0.42 },
+        },
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      // Pass 5 Material: Separable Gaussian Blur
+      const blurUniforms = {
+        tDiffuse: { value: null },
+        uDirection: { value: new THREE.Vector2(1, 0) },
+        uTexelSize: { value: new THREE.Vector2(1 / bloomHalfA.width, 1 / bloomHalfA.height) },
+      };
+      const blurMat = new THREE.ShaderMaterial({
+        vertexShader: FULLSCREEN_VERT,
+        fragmentShader: BLUR_FRAG,
+        uniforms: blurUniforms,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      // Pass 6 Material: Final Composite
+      const compositeUniforms = {
+        tScene: { value: sceneRT.texture },
+        tBloomTight: { value: bloomHalfA.texture },
+        tBloomWide: { value: bloomQuarterA.texture },
+        uCenter: { value: vanishingUvVec },
+        uAspect: { value: window.innerWidth / Math.max(window.innerHeight, 1) },
+        uWarp: { value: 0 },
+        uFovNorm: { value: 0 },
+        uBloomStrength: { value: params.bloomGlow },
+        uChromatic: { value: params.chromatic },
+        uTime: { value: 0 },
+      };
+      const compositeMat = new THREE.ShaderMaterial({
+        vertexShader: FULLSCREEN_VERT,
+        fragmentShader: COMPOSITE_FRAG,
+        uniforms: compositeUniforms,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      // Pass 7 Material: Selective Post-Tonemap FXAA 3.11 (Rocket Silhouette Only)
+      // Runs at full strength if hardware MSAA is unavailable, and gentle polish even with 4x MSAA
+      const fxaaUniforms = {
+        tDiffuse: { value: tonemapRT.texture },
+        uTexelSize: { value: new THREE.Vector2(1 / initW, 1 / initH) },
+        uFxaaStrength: { value: msaaSamples > 0 ? 0.82 : 1.0 },
+        uTime: { value: 0 },
+      };
+      const fxaaMat = new THREE.ShaderMaterial({
+        vertexShader: FULLSCREEN_VERT,
+        fragmentShader: FXAA_FRAG,
+        uniforms: fxaaUniforms,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      const postQuad = new THREE.Mesh(postGeo, brightMat);
+      postScene.add(postQuad);
+      disposables.push(postGeo, lensingBHMat, brightMat, blurMat, compositeMat, fxaaMat);
+
+      // ==========================================================================
+      // 7. 5-STAGE ASYMMETRIC CHOREOGRAPHY + MANUAL CANVAS CRUISE
+      // ==========================================================================
+      const STAGE_DUR = {
+        ROCKET_DIVE: 2.15 * timeScale,
+        SINGULARITY_CHARGE: 0.75 * timeScale,
+        BREAKTHROUGH: 1.25 * timeScale,
+        CRUISE: 4.50 * timeScale,
+        ARRIVE_RETURN: 2.85 * timeScale,
+      };
+      const TOTAL_SEQ_DUR =
+        STAGE_DUR.ROCKET_DIVE +
+        STAGE_DUR.SINGULARITY_CHARGE +
+        STAGE_DUR.BREAKTHROUGH +
+        STAGE_DUR.CRUISE +
+        STAGE_DUR.ARRIVE_RETURN;
+
+      const clamp01 = (x) => Math.min(1, Math.max(0, x));
+      const smoothstep = (e0, e1, x) => {
+        const t = clamp01((x - e0) / Math.max(e1 - e0, 0.0001));
+        return t * t * (3 - 2 * t);
+      };
+      const smoothQuint = (x) => {
+        const t = clamp01(x);
+        return t * t * t * (t * (t * 6 - 15) + 10);
+      };
+      const easeOutExpo = (x) => {
+        const t = clamp01(x);
+        return t >= 1 ? 1 : 1 - Math.pow(2, -9 * t);
+      };
+      const easeInOutCubic = (x) => {
+        const t = clamp01(x);
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
+      const easeOutBack = (x) => {
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        const t = clamp01(x) - 1;
+        return 1 + c3 * t * t * t + c1 * t * t;
+      };
+
+      const ripples = [
+        { active: false, progress: 0, strength: 0, speed: 0.72 },
+        { active: false, progress: 0, strength: 0, speed: 0.64 },
+      ];
+
+      function triggerRipple(slot, strength = 1.0, speed = 0.72) {
+        const r = ripples[slot];
+        r.active = true;
+        r.progress = 0.002;
+        r.strength = strength;
+        r.speed = speed;
+      }
+
+      const state = {
+        stage: 'IDLE', // 'IDLE' | 'ROCKET_DIVE' | 'SINGULARITY_CHARGE' | 'BREAKTHROUGH' | 'CRUISE' | 'ARRIVE_RETURN' | 'MANUAL_CRUISE'
+        stageTime: 0,
+        totalTime: 0,
+
+        // One-shot choreography flags
+        firedIgnitionBurst: false,
+        firedAbsorbPulse: false,
+        firedEntryRipple: false,
+        firedExitRipple: false,
+        firedReturnPortal: false,
+        switchedRealmThisJump: false,
+        pendingRealmIndex: 0,
+
+        // Deceleration snapshots
+        decelStartWarp: 1,
+        decelStartStretch: 1,
+        decelStartFov: DEFAULTS.maxFov,
+        decelStartVeil: 1,
+
+        // Input tracking
+        spaceHeld: false,
+        canvasDown: false,
+        canvasDownTime: 0,
+        canvasDownOnRocket: false,
+        rocketHovered: false,
+        manualLevel: 0,
+        rocketTuck: 0, // Smoothly tucks rocket down out of frame during idle canvas hold-to-cruise
+
+        // Live optical & kinematic state
+        warpIntensity: 0,
+        chargeIntensity: 0,
+        streakNorm: 0,
+        veilEnv: 0,        fov: BASE_FOV,
+
+        // Black hole live parameters
+        bhVisibility: 0,
+        bhWorldRadius: 0,
+        bhLensStrength: 0,
+        bhChargePulse: 0,
+        bhAbsorbPulse: 0,
+
+        // Continuous multi-layer star travel accumulators
+        deepTravel: 0,
+        mainTravel: 0,
+        flybyTravel: 0,
+        veilFlow: 0,
+        nebulaDrift: 0,
+
+        // 3D exhaust emission timers
+        trailAccum: 0,
+        hoverSparkleAccum: 0,
+
+        // Mouse/touch pointer NDC (-1..1) & smoothed parallax
+        pointerNdc: new THREE.Vector2(0, 0),
+        pointerTarget: new THREE.Vector2(0, 0),
+        pointerSmooth: new THREE.Vector2(0, 0),
+      };
+
+      // Compute dynamically anchored 3D foreground idle spot (~75% down from top on desktop & mobile)
+      function getRocketIdleAnchor() {
+        const aspect = camera.aspect;
+        const idleZ = -6.2;
+        const halfH = Math.abs(idleZ) * Math.tan(THREE.MathUtils.degToRad(BASE_FOV * 0.5));
+        const idleY = -0.50 * halfH; // ~75% down from top
+        const responsiveScale = THREE.MathUtils.clamp(aspect / 0.80, 0.72, 1.0) * 0.54;
+        return { x: 0, y: idleY, z: idleZ, scale: responsiveScale };
+      }
+
+      // Reusable vectors/quaternions for zero-GC 3D Bezier flight & particle spawning
+      const bzP0 = new THREE.Vector3();
+      const bzP1 = new THREE.Vector3();
+      const bzP2 = new THREE.Vector3();
+      const bzP3 = new THREE.Vector3();
+      const flightPos = new THREE.Vector3();
+      const flightPrev = new THREE.Vector3();
+      const flightNext = new THREE.Vector3();
+      const flightTangent = new THREE.Vector3();
+      const basisX = new THREE.Vector3();
+      const basisZ = new THREE.Vector3();
+      const basisMat = new THREE.Matrix4();
+      const flightQuat = new THREE.Quaternion();
+      const rollQuat = new THREE.Quaternion();
+      const localNozzlePos = new THREE.Vector3(0, -0.88, 0);
+      const worldNozzlePos = new THREE.Vector3();
+      const worldDownDir = new THREE.Vector3();
+      const Y_AXIS = new THREE.Vector3(0, 1, 0);
+      const REF_FORWARD = new THREE.Vector3(0, 0, 1);
+
+      const COLOR_PUFF_CREAM = new THREE.Color('#FFF4E4');
+      const COLOR_PUFF_PEACH = new THREE.Color('#FFD7C4');
+      const COLOR_SPARK_GOLD = new THREE.Color('#FFE494');
+      const COLOR_SPARK_WHITE = new THREE.Color('#FFFBF0');
+
+      function emitSparkleColor() {
+        const pick = Math.random();
+        if (pick < 0.36) return COLOR_SPARK_GOLD;
+        if (pick < 0.62) return COLOR_SPARK_WHITE;
+        return pick < 0.84 ? liveColors.star1 : liveColors.star0;
+      }
+
+      function emitIgnitionBurst(origin, scale) {
+        // Fluffy creamy-gold cloud puff ring + golden star burst downward
+        for (let i = 0; i < 18; i++) {
+          const ang = (i / 18) * Math.PI * 2 + Math.random() * 0.25;
+          const radSpd = (0.9 + Math.random() * 1.45) * scale;
+          exhaustPool.spawn({
+            x: origin.x + Math.cos(ang) * 0.10 * scale,
+            y: origin.y - 0.04 * scale,
+            z: origin.z + Math.sin(ang) * 0.10 * scale,
+            vx: Math.cos(ang) * radSpd,
+            vy: (-0.6 - Math.random() * 1.1) * scale,
+            vz: Math.sin(ang) * radSpd,
+            life: 0.65 + Math.random() * 0.42,
+            startSize: (0.28 + Math.random() * 0.18) * scale,
+            endSize: (0.72 + Math.random() * 0.42) * scale,
+            type: 0,
+            color: Math.random() < 0.65 ? COLOR_PUFF_CREAM : COLOR_PUFF_PEACH,
+          });
+        }
+        for (let i = 0; i < 20; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = (1.2 + Math.random() * 2.4) * scale;
+          exhaustPool.spawn({
+            x: origin.x + (Math.random() - 0.5) * 0.18 * scale,
+            y: origin.y,
+            z: origin.z + (Math.random() - 0.5) * 0.18 * scale,
+            vx: Math.cos(ang) * spd,
+            vy: (-0.8 - Math.random() * 1.6) * scale,
+            vz: Math.sin(ang) * spd,
+            life: 0.58 + Math.random() * 0.48,
+            startSize: (0.22 + Math.random() * 0.24) * scale,
+            endSize: (0.08 + Math.random() * 0.10) * scale,
+            type: 1,
+            color: emitSparkleColor(),
+          });
+        }
+      }
+
+      function emitSparkleBurst3D(origin, count, speedScale, sizeScale) {
+        for (let i = 0; i < count; i++) {
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          const spd = (1.1 + Math.random() * 2.3) * speedScale;
+          exhaustPool.spawn({
+            x: origin.x,
+            y: origin.y,
+            z: origin.z,
+            vx: Math.sin(phi) * Math.cos(theta) * spd,
+            vy: Math.sin(phi) * Math.sin(theta) * spd,
+            vz: Math.cos(phi) * spd * 0.5,
+            life: 0.55 + Math.random() * 0.52,
+            startSize: (0.26 + Math.random() * 0.28) * sizeScale,
+            endSize: 0.08 * sizeScale,
+            type: 1,
+            color: emitSparkleColor(),
+          });
+        }
+      }
+
+      // ==========================================================================
+      // 8. HUD ELEMENTS, RAYCASTER & INTERACTION BINDINGS
+      // ==========================================================================
+      const raycaster = new THREE.Raycaster();
+      const elTopLeftStatus = document.getElementById('top-left-status');
+      const elPhaseDot = document.getElementById('phase-dot');
+      const elPhaseIndicator = document.getElementById('phase-indicator');
+      const elRealmBadgeInner = document.getElementById('realm-badge-inner');
+      const elRealmZh = document.getElementById('realm-name-zh');
+      const elRealmEn = document.getElementById('realm-name-en');
+      const elRocketCaption = document.getElementById('rocket-caption');
+      const elProgressWrap = document.getElementById('warp-progress-wrap');
+      const elProgressBar = document.getElementById('warp-progress-bar');
+
+      const elHideUiBtn = document.getElementById('hide-ui-btn');
+      const elRestoreUiBtn = document.getElementById('restore-ui-btn');
+      const elToggleParamsBtn = document.getElementById('toggle-params-btn');
+      const elParamsDrawer = document.getElementById('params-drawer');
+      const elResetBtn = document.getElementById('reset-params-btn');
+      const elAutoRealmBtn = document.getElementById('auto-realm-toggle');
+      const elAutoRealmTrack = document.getElementById('auto-realm-track');
+      const realmChips = document.querySelectorAll('.realm-chip');
+
+      let badgeTimer = null;
+
+      function applyRealmUI(index, animateBadge = true) {
+        const r = REALMS[index];
+        if (!r) return;
+
+        document.documentElement.style.setProperty('--accent', r.cssAccent);
+        document.documentElement.style.setProperty('--accent-soft', r.cssSoft);
+        document.documentElement.style.setProperty('--accent-faint', r.cssFaint);
+
+        elPhaseDot.style.backgroundColor = r.cssAccent;
+        elPhaseDot.style.boxShadow = `0 0 8px ${r.cssAccent}`;
+
+        realmChips.forEach((chip) => {
+          chip.classList.toggle('active', Number(chip.dataset.realm) === index);
+        });
+
+        if (animateBadge) {
+          elRealmBadgeInner.classList.add('is-switching');
+          clearTimeout(badgeTimer);
+          badgeTimer = setTimeout(() => {
+            elRealmZh.textContent = r.zh;
+            elRealmEn.textContent = r.en;
+            elRealmBadgeInner.classList.remove('is-switching');
+          }, 280);
+        } else {
+          elRealmZh.textContent = r.zh;
+          elRealmEn.textContent = r.en;
+        }
+      }
+
+      function selectRealm(index, immediateBadge = true) {
+        params.realmIndex = ((index % REALMS.length) + REALMS.length) % REALMS.length;
+        if (immediateBadge) {
+          applyRealmUI(params.realmIndex, true);
+        } else {
+          realmChips.forEach((chip) => {
+            chip.classList.toggle('active', Number(chip.dataset.realm) === params.realmIndex);
+          });
+        }
+      }
+
+      function launchRocketSequence() {
+        if (state.stage !== 'IDLE') return;
+        window.__ROCKET_WARP_STARTED__ = true;
+        try { window.parent.document.body.classList.add('rocket-launching'); } catch (_error) {}
+        state.stage = 'ROCKET_DIVE';
+        state.stageTime = 0;
+        state.totalTime = 0;
+        state.firedIgnitionBurst = false;
+        state.firedAbsorbPulse = false;
+        state.firedEntryRipple = false;
+        state.firedExitRipple = false;
+        state.firedReturnPortal = false;
+        state.switchedRealmThisJump = false;
+        state.pendingRealmIndex = (params.realmIndex + 1) % REALMS.length;
+        state.rocketHovered = false;
+        canvas.classList.remove('rocket-hover');
+        elRocketCaption.classList.remove('is-illuminated');
+        elRocketCaption.classList.add('is-hidden');
+      }
+
+      function enterArrival() {
+        if (state.stage !== 'CRUISE') return;
+        if (params.autoSwitchRealm && !state.switchedRealmThisJump) {
+          state.switchedRealmThisJump = true;
+          selectRealm(state.pendingRealmIndex, false);
+        }
+        state.stage = 'ARRIVE_RETURN';
+        state.stageTime = 0;
+        state.firedExitRipple = false;
+        state.firedReturnPortal = false;
+        state.decelStartWarp = Math.max(state.warpIntensity, 0.35);
+        state.decelStartStretch = Math.max(state.streakNorm, 0.35);
+        state.decelStartFov = state.fov;
+        state.decelStartVeil = state.veilEnv;
+      }
+
+      function checkRocketHit(ndcVec) {
+        if (state.stage !== 'IDLE' || state.rocketTuck > 0.25) return false;
+        raycaster.setFromCamera(ndcVec, camera);
+        const hits = raycaster.intersectObject(rocket.hitMesh, false);
+        return hits.length > 0;
+      }
+
+      // Deterministic inspection hook for browser regression tests.
+      window.__ROCKET_WARP_DEBUG__ = {
+        getStage: () => state.stage,
+        getRocketScreenPoint: () => {
+          rocket.root.updateMatrixWorld(true);
+          const point = new THREE.Vector3();
+          rocket.hitMesh.getWorldPosition(point);
+          point.project(camera);
+          return { x: (point.x * 0.5 + 0.5) * window.innerWidth, y: (0.5 - point.y * 0.5) * window.innerHeight };
+        },
+      };
+
+      // UI Controls Listeners
+      function toggleUi() {
+        document.body.classList.toggle('ui-hidden');
+      }
+      elHideUiBtn.addEventListener('click', toggleUi);
+      elRestoreUiBtn.addEventListener('click', toggleUi);
+
+      elToggleParamsBtn.addEventListener('click', () => {
+        const collapsed = elParamsDrawer.classList.toggle('is-collapsed');
+        elToggleParamsBtn.setAttribute('aria-expanded', String(!collapsed));
+      });
+
+      realmChips.forEach((chip) => {
+        chip.addEventListener('click', () => selectRealm(Number(chip.dataset.realm), true));
+      });
+
+      elAutoRealmBtn.addEventListener('click', () => {
+        params.autoSwitchRealm = !params.autoSwitchRealm;
+        elAutoRealmBtn.setAttribute('aria-checked', String(params.autoSwitchRealm));
+        elAutoRealmTrack.dataset.on = String(params.autoSwitchRealm);
+      });
+
+      const sliderBindings = [
+        { key: 'streakLength', id: 'slider-streak', valId: 'val-streak', fmt: (v) => v.toFixed(2) },
+        { key: 'bgStarSpeed', id: 'slider-bgflow', valId: 'val-bgflow', fmt: (v) => `${v.toFixed(2)}x` },
+        { key: 'streamDensity', id: 'slider-density', valId: 'val-density', fmt: (v) => v.toFixed(2) },
+        { key: 'maxFov', id: 'slider-maxfov', valId: 'val-maxfov', fmt: (v) => `${Math.round(v)}°` },
+        { key: 'bloomGlow', id: 'slider-bloom', valId: 'val-bloom', fmt: (v) => v.toFixed(2) },
+        { key: 'spacetimeVeil', id: 'slider-veil', valId: 'val-veil', fmt: (v) => v.toFixed(2) },
+        { key: 'rippleStrength', id: 'slider-ripple', valId: 'val-ripple', fmt: (v) => v.toFixed(2) },
+        { key: 'chromatic', id: 'slider-chromatic', valId: 'val-chromatic', fmt: (v) => v.toFixed(2) },
+      ];
+
+      sliderBindings.forEach((item) => {
+        const slider = document.getElementById(item.id);
+        const readout = document.getElementById(item.valId);
+        slider.addEventListener('input', () => {
+          const val = parseFloat(slider.value);
+          params[item.key] = val;
+          readout.textContent = item.fmt(val);
+        });
+      });
+
+      elResetBtn.addEventListener('click', () => {
+        Object.assign(params, DEFAULTS);
+        applyRealmUI(params.realmIndex, true);
+        elAutoRealmBtn.setAttribute('aria-checked', 'true');
+        elAutoRealmTrack.dataset.on = 'true';
+        sliderBindings.forEach((item) => {
+          const slider = document.getElementById(item.id);
+          const readout = document.getElementById(item.valId);
+          slider.value = String(params[item.key]);
+          readout.textContent = item.fmt(params[item.key]);
+        });
+      });
+
+      // Pointer & Keyboard Interactions (Raycasting 3D Rocket + Hold Empty Canvas for Manual Cruise)
+      function updatePointerCoords(clientX, clientY) {
+        const nx = (clientX / Math.max(window.innerWidth, 1)) * 2 - 1;
+        const ny = -(clientY / Math.max(window.innerHeight, 1)) * 2 + 1;
+        state.pointerNdc.set(THREE.MathUtils.clamp(nx, -1, 1), THREE.MathUtils.clamp(ny, -1, 1));
+        state.pointerTarget.copy(state.pointerNdc);
+      }
+
+      const onPointerMove = (e) => {
+        updatePointerCoords(e.clientX, e.clientY);
+        const hit = checkRocketHit(state.pointerNdc);
+        state.rocketHovered = hit;
+        canvas.classList.toggle('rocket-hover', hit);
+        elRocketCaption.classList.toggle('is-illuminated', hit);
+      };
+      window.addEventListener('pointermove', onPointerMove, { passive: true });
+
+      canvas.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        updatePointerCoords(e.clientX, e.clientY);
+        const hit = checkRocketHit(state.pointerNdc);
+        state.canvasDown = true;
+        state.canvasDownTime = performance.now();
+        state.canvasDownOnRocket = hit;
+
+        if (hit && state.stage === 'IDLE') {
+          launchRocketSequence();
+        }
+      });
+
+      const onPointerRelease = () => {
+        state.canvasDown = false;
+        state.canvasDownOnRocket = false;
+      };
+      window.addEventListener('pointerup', onPointerRelease);
+      window.addEventListener('pointercancel', onPointerRelease);
+
+      const onBlur = () => {
+        state.canvasDown = false;
+        state.spaceHeld = false;
+        state.rocketHovered = false;
+        canvas.classList.remove('rocket-hover');
+      };
+      window.addEventListener('blur', onBlur);
+
+      const onKeyDown = (e) => {
+        if (document.activeElement?.tagName === 'INPUT') return;
+        if (e.code === 'Space') {
+          e.preventDefault();
+          state.spaceHeld = true;
+          if (state.stage === 'IDLE') {
+            launchRocketSequence();
+          }
+        } else if (e.key === 'h' || e.key === 'H') {
+          e.preventDefault();
+          toggleUi();
+        }
+      };
+
+      const onKeyUp = (e) => {
+        if (e.code === 'Space') {
+          state.spaceHeld = false;
+        }
+      };
+
+      window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('keyup', onKeyUp);
+
+      // ==========================================================================
+      // 9. RESPONSIVE HiDPI RESIZE & CLEAN DISPOSAL
+      // ==========================================================================
+      function onResize() {
+        const w = window.innerWidth;
+        const h = Math.max(window.innerHeight, 1);
+        const dpr = getDPR();
+        const aspect = w / h;
+
+        camera.aspect = aspect;
+        camera.updateProjectionMatrix();
+
+        renderer.setPixelRatio(dpr);
+        renderer.setSize(w, h, false);
+
+        const rw = Math.max(1, Math.floor(w * dpr));
+        const rh = Math.max(1, Math.floor(h * dpr));
+        const hw = Math.max(1, Math.floor(rw * 0.5));
+        const hh = Math.max(1, Math.floor(rh * 0.5));
+        const qw = Math.max(1, Math.floor(rw * 0.25));
+        const qh = Math.max(1, Math.floor(rh * 0.25));
+
+        spaceRT.setSize(rw, rh);
+        sceneRT.setSize(rw, rh);
+        tonemapRT.setSize(rw, rh);
+        brightRT.setSize(hw, hh);
+        bloomHalfA.setSize(hw, hh);
+        bloomHalfB.setSize(hw, hh);
+        bloomQuarterA.setSize(qw, qh);
+        bloomQuarterB.setSize(qw, qh);
+
+        resolutionVec.set(rw, rh);
+        fxaaUniforms.uTexelSize.value.set(1 / rw, 1 / rh);
+
+        backdropUniforms.uAspect.value = aspect;
+        lensingBHUniforms.uAspect.value = aspect;
+        compositeUniforms.uAspect.value = aspect;
+
+        [layer1Deep, layer2Main, layer3Flyby].forEach(({ uniforms }) => {
+          uniforms.uAspect.value = aspect;
+          uniforms.uPixelRatio.value = dpr;
+        });
+      }
+
+      window.addEventListener('resize', onResize);
+
+      let rafId = 0;
+      const cleanup = () => {
+        cancelAnimationFrame(rafId);
+        window.removeEventListener('resize', onResize);
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerRelease);
+        window.removeEventListener('pointercancel', onPointerRelease);
+        window.removeEventListener('blur', onBlur);
+        window.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('keyup', onKeyUp);
+        disposables.forEach((d) => d.dispose && d.dispose());
+        renderer.dispose();
+      };
+      window.addEventListener('beforeunload', cleanup);
+
+      // ==========================================================================
+      // 10. MAIN 60FPS ANIMATION & 6-PASS RENDER LOOP
+      // ==========================================================================
+      const camRight = new THREE.Vector3();
+      const camUp = new THREE.Vector3();
+      const camForward = new THREE.Vector3();
+      const vanishingWorld = new THREE.Vector3(0, 0, -1200);
+      const vanishingNDC = new THREE.Vector3();
+      const bhNDC = new THREE.Vector3();
+      const bhViewPos = new THREE.Vector3();
+
+      let lastNow = performance.now();
+      let elapsed = 0;
+
+      function updatePhaseHUD(phaseText, showProgress, progressPct) {
+        if (elPhaseIndicator.textContent !== phaseText) {
+          elPhaseIndicator.textContent = phaseText;
+        }
+        elTopLeftStatus.classList.toggle('is-dimmed', showProgress);
+        elProgressWrap.classList.toggle('is-visible', showProgress);
+        elProgressBar.style.width = `${clamp01(progressPct / 100) * 100}%`;
+      }
+
+      function animate(now) {
+        rafId = requestAnimationFrame(animate);
+
+        const dt = Math.min((now - lastNow) * 0.001, 0.05);
+        lastNow = now;
+        elapsed += dt;
+
+        // 1) Smooth Active Starfield Theme Cross-Fade Across Cosmos, Black Hole & Rim Light
+        const activeRealm = REALMS[params.realmIndex];
+        const colorRate = 1.0 - Math.exp(-dt * 1.45);
+        liveColors.rimLight.lerp(activeRealm.rimLight, colorRate);
+        liveColors.skyDeep.lerp(activeRealm.skyDeep, colorRate);
+        liveColors.skyMid.lerp(activeRealm.skyMid, colorRate);
+        liveColors.nebulaA.lerp(activeRealm.nebulaA, colorRate);
+        liveColors.nebulaB.lerp(activeRealm.nebulaB, colorRate);
+        liveColors.veilA.lerp(activeRealm.veilA, colorRate);
+        liveColors.veilB.lerp(activeRealm.veilB, colorRate);
+        liveColors.vpGlow.lerp(activeRealm.vpGlow, colorRate);
+        liveColors.bhDiskInner.lerp(activeRealm.bhDiskInner, colorRate);
+        liveColors.bhDiskOuter.lerp(activeRealm.bhDiskOuter, colorRate);
+        liveColors.star0.lerp(activeRealm.star0, colorRate);
+        liveColors.star1.lerp(activeRealm.star1, colorRate);
+        liveColors.star2.lerp(activeRealm.star2, colorRate);
+        liveColors.star3.lerp(activeRealm.star3, colorRate);
+        liveColors.headTint.lerp(activeRealm.headTint, colorRate);
+        rimLight.color.copy(liveColors.rimLight);
+
+        // Animate tiny glowing golden star inside rocket cabin
+        rocket.cabinStarMesh.rotation.z = Math.sin(elapsed * 2.1) * 0.25;
+        rocket.cabinStarMesh.position.y = Math.sin(elapsed * 3.0) * 0.012;
+
+        // 2) Step Complete 5-Stage Choreography + Idle Hold-to-Cruise
+        const anchor = getRocketIdleAnchor();
+        const isExtendingCruise = state.spaceHeld || state.canvasDown;
+
+        // Check empty-canvas hold > 220ms when idle -> smoothly enter MANUAL_CRUISE
+        if (state.stage === 'IDLE' && state.canvasDown && !state.canvasDownOnRocket) {
+          if (now - state.canvasDownTime > 220) {
+            state.stage = 'MANUAL_CRUISE';
+            elRocketCaption.classList.add('is-hidden');
+          }
+        }
+
+        let targetWarp = 0;
+        let targetCharge = 0;
+        let targetStretch = 0;
+        let targetVeil = 0;
+        let targetFov = BASE_FOV;
+        let mainSpeed = 2.6;
+
+        let targetBhVis = 0;
+        let targetBhWorldRadius = 0;
+        let targetBhLens = 0;
+        let targetBhCharge = 0;
+
+        let flamePower = 0.20;
+        let flameStretch = 0.72;
+        let phaseText = '静谧星海';
+        let progressPct = 0;
+        let showProgress = false;
+        let centerParallax = false;
+
+        portalMesh.visible = false;
+
+        if (state.stage === 'IDLE') {
+          state.rocketTuck += (0.0 - state.rocketTuck) * (1.0 - Math.exp(-dt * 5.5));
+          elRocketCaption.classList.toggle('is-hidden', state.rocketTuck > 0.25);
+
+          rocket.root.visible = true;
+          const bob = Math.sin(elapsed * 2.3) * 0.08;
+          const hoverLift = state.rocketHovered ? 0.14 : 0.0;
+          const tuckDrop = state.rocketTuck * 2.2;
+
+          rocket.root.position.set(anchor.x, anchor.y + bob + hoverLift - tuckDrop, anchor.z);
+
+          // Playful hover wiggle + gentle turn toward mouse pointer for tactile vinyl-toy charm!
+          const hoverWiggle = state.rocketHovered ? Math.sin(elapsed * 9.5) * 0.14 : 0.0;
+          const idleSway = Math.sin(elapsed * 1.2) * 0.06;
+          rocket.root.rotation.order = 'YXZ';
+          rocket.root.rotation.y = state.pointerSmooth.x * 0.34 + Math.sin(elapsed * 0.85) * 0.14;
+          rocket.root.rotation.x = -state.pointerSmooth.y * 0.16 + 0.05;
+          rocket.root.rotation.z = idleSway + hoverWiggle - state.pointerSmooth.x * 0.08;
+
+          const hoverScale = (state.rocketHovered ? 1.07 : 1.0) * (1.0 - state.rocketTuck * 0.35);
+          const s = anchor.scale * hoverScale;
+          rocket.root.scale.set(s, s, s);
+
+          flamePower = state.rocketHovered ? 0.65 : 0.22;
+          flameStretch = state.rocketHovered ? 0.98 : 0.72;
+
+          // Emit cute subtle sparkles on hover
+          if (state.rocketHovered && state.rocketTuck < 0.1) {
+            state.hoverSparkleAccum += dt;
+            if (state.hoverSparkleAccum >= 0.11) {
+              state.hoverSparkleAccum = 0;
+              rocket.root.updateMatrixWorld();
+              worldNozzlePos.copy(localNozzlePos).applyMatrix4(rocket.root.matrixWorld);
+              exhaustPool.spawn({
+                x: worldNozzlePos.x + (Math.random() - 0.5) * 0.22,
+                y: worldNozzlePos.y - 0.06,
+                z: worldNozzlePos.z + (Math.random() - 0.5) * 0.16,
+                vx: (Math.random() - 0.5) * 0.55,
+                vy: -0.75 - Math.random() * 0.65,
+                vz: (Math.random() - 0.5) * 0.35,
+                life: 0.58 + Math.random() * 0.36,
+                startSize: 0.16 + Math.random() * 0.14,
+                endSize: 0.05,
+                type: 1,
+                color: emitSparkleColor(),
+              });
+            }
+          }
+        } else if (state.stage === 'MANUAL_CRUISE') {
+          // Smooth manual hold-to-cruise on empty canvas: rocket tucks down gracefully out of frame
+          const holding = state.canvasDown || state.spaceHeld;
+          state.manualLevel += ((holding ? 1.0 : 0.0) - state.manualLevel) * (1.0 - Math.exp(-dt * (holding ? 2.4 : 2.2)));
+          state.rocketTuck += (1.0 - state.rocketTuck) * (1.0 - Math.exp(-dt * 5.0));
+
+          const tuckDrop = state.rocketTuck * 2.4;
+          rocket.root.visible = state.rocketTuck < 0.96;
+          rocket.root.position.set(anchor.x, anchor.y - tuckDrop, anchor.z);
+          const s = anchor.scale * Math.max(0.01, 1.0 - state.rocketTuck * 0.55);
+          rocket.root.scale.set(s, s, s);
+
+          const m = smoothQuint(state.manualLevel);
+          targetWarp = m;
+          targetStretch = m;
+          targetVeil = m;
+          targetFov = BASE_FOV + (params.maxFov - BASE_FOV) * m;
+          mainSpeed = 2.6 + Math.pow(m, 1.4) * 168.0;
+
+          phaseText = holding ? '星海巡航 · 手动' : '减速归位';
+          showProgress = true;
+          progressPct = m * 100;
+
+          if (!holding && state.manualLevel < 0.02) {
+            state.stage = 'IDLE';
+            state.manualLevel = 0;
+          }
+        } else if (state.stage === 'ROCKET_DIVE') {
+          // STAGE 1: Ignition & 3D Spiral Dive (2.35s)
+          state.stageTime += dt;
+          state.totalTime += dt;
+          showProgress = true;
+          phaseText = '点火跃入黑洞';
+          progressPct = (state.totalTime / TOTAL_SEQ_DUR) * 100;
+
+          const t = state.stageTime;
+          const bhBloom = smoothQuint(clamp01(t / (1.25 * timeScale)));
+          targetBhVis = bhBloom;
+          targetBhWorldRadius = 1.38 * (0.32 + 0.68 * bhBloom);
+          targetBhLens = 0.88 * bhBloom;
+          mainSpeed = THREE.MathUtils.lerp(2.6, 0.85, bhBloom);
+
+          rocket.root.visible = true;
+          const T_CROUCH = 0.40 * timeScale;
+          const T_END = STAGE_DUR.ROCKET_DIVE;
+
+          if (t < T_CROUCH) {
+            // 0.00–0.45s: Cute squash-and-stretch anticipation crouch + excited wiggle + puff burst
+            const p = t / T_CROUCH;
+            const crouch = Math.sin(p * Math.PI);
+            const sxz = anchor.scale * (1.0 + crouch * 0.14);
+            const sy = anchor.scale * (1.0 - crouch * 0.20);
+
+            rocket.root.position.set(anchor.x, anchor.y - crouch * 0.14, anchor.z);
+            rocket.root.rotation.set(0.06, Math.sin(p * Math.PI * 3) * 0.10, Math.sin(p * Math.PI * 5) * 0.08);
+            rocket.root.scale.set(sxz, sy, sxz);
+
+            flamePower = 0.45 + p * 1.15;
+            flameStretch = 0.90 + p * 0.65;
+
+            if (!state.firedIgnitionBurst && t >= 0.16 * timeScale) {
+              state.firedIgnitionBurst = true;
+              rocket.root.updateMatrixWorld();
+              worldNozzlePos.copy(localNozzlePos).applyMatrix4(rocket.root.matrixWorld);
+              emitIgnitionBurst(worldNozzlePos, anchor.scale * 1.45);
+            }
+          } else {
+            // 0.45–2.35s: Smooth 3D Cubic Bezier sweeping arc into exact BH_ANCHOR (0, 0.25, -14.5)
+            const uRaw = clamp01((t - T_CROUCH) / (T_END - T_CROUCH));
+            // Smooth acceleration into gravitational capture
+            const u = uRaw * uRaw * (1.35 - 0.35 * uRaw);
+            const arcScale = Math.min(1.0, camera.aspect * 0.88);
+
+            bzP0.set(anchor.x, anchor.y, anchor.z);
+            bzP1.set(2.35 * arcScale, anchor.y + 2.65, -7.2);
+            bzP2.set(2.75 * arcScale, 2.35, -11.6);
+            bzP3.copy(BH_ANCHOR);
+
+            evalCubicBezier3D(bzP0, bzP1, bzP2, bzP3, clamp01(u), flightPos);
+            evalCubicBezier3D(bzP0, bzP1, bzP2, bzP3, clamp01(u - 0.012), flightPrev);
+            evalCubicBezier3D(bzP0, bzP1, bzP2, bzP3, clamp01(u + 0.012), flightNext);
+
+            flightTangent.subVectors(flightNext, flightPrev).normalize();
+
+            // Build smooth orthonormal orientation basis aligning +Y nose cleanly to 3D tangent
+            basisX.crossVectors(flightTangent, REF_FORWARD);
+            if (basisX.lengthSq() < 0.001) basisX.set(1, 0, 0);
+            basisX.normalize();
+            basisZ.crossVectors(basisX, flightTangent).normalize();
+            basisMat.makeBasis(basisX, flightTangent, basisZ);
+            flightQuat.setFromRotationMatrix(basisMat);
+
+            // Charming gentle axial barrel roll around flight axis as it dives into the black hole
+            const barrelRoll = smoothQuint(uRaw) * Math.PI * 2.25;
+            rollQuat.setFromAxisAngle(Y_AXIS, barrelRoll);
+            rocket.root.quaternion.copy(flightQuat).multiply(rollQuat);
+            rocket.root.position.copy(flightPos);
+
+            // Initial rebound stretch settling smoothly, then final 0.5s gravitational spaghettification
+            const spagStart = (T_END - 0.50 * timeScale - T_CROUCH) / (T_END - T_CROUCH);
+            let sXZ = anchor.scale;
+            let sY = anchor.scale;
+
+            if (uRaw < 0.22) {
+              const reb = 1.0 - uRaw / 0.22;
+              sXZ = anchor.scale * (1.0 - reb * 0.12);
+              sY = anchor.scale * (1.0 + reb * 0.18);
+            } else if (uRaw > spagStart) {
+              const sv = clamp01((uRaw - spagStart) / (1.0 - spagStart));
+              const shrink = THREE.MathUtils.lerp(1.0, 0.0, Math.pow(sv, 1.55));
+              const pull = Math.sin(sv * Math.PI);
+              sXZ = anchor.scale * shrink * (1.0 - pull * 0.24);
+              sY = anchor.scale * shrink * (1.0 + pull * 0.48);
+
+              // Trigger photon-ring absorption pulse right as rocket slips into velvet horizon
+              if (!state.firedAbsorbPulse && sv >= 0.86) {
+                state.firedAbsorbPulse = true;
+                state.bhAbsorbPulse = 1.0;
+                emitSparkleBurst3D(BH_ANCHOR, 26, 1.45, 1.25);
+              }
+            }
+
+            rocket.root.scale.set(Math.max(0.0001, sXZ), Math.max(0.0001, sY), Math.max(0.0001, sXZ));
+            if (sY < 0.004) rocket.root.visible = false;
+
+            flamePower = 1.45;
+            flameStretch = 1.55 + Math.sin(elapsed * 22) * 0.12;
+
+            // Emit continuous 3D curving stardust & fluffy mini-puff trail behind nozzle
+            state.trailAccum += dt;
+            if (state.trailAccum >= 0.018 && rocket.root.visible && sY > 0.08) {
+              state.trailAccum = 0;
+              rocket.root.updateMatrixWorld();
+              worldNozzlePos.copy(localNozzlePos).applyMatrix4(rocket.root.matrixWorld);
+              worldDownDir.set(0, -1, 0).applyQuaternion(rocket.root.quaternion).normalize();
+              const trailScale = sY / anchor.scale;
+
+              // Pastel exhaust mini-puff
+              exhaustPool.spawn({
+                x: worldNozzlePos.x + (Math.random() - 0.5) * 0.08,
+                y: worldNozzlePos.y + (Math.random() - 0.5) * 0.08,
+                z: worldNozzlePos.z + (Math.random() - 0.5) * 0.08,
+                vx: worldDownDir.x * (0.9 + Math.random() * 0.8) + (Math.random() - 0.5) * 0.3,
+                vy: worldDownDir.y * (0.9 + Math.random() * 0.8) + (Math.random() - 0.5) * 0.3,
+                vz: worldDownDir.z * (0.9 + Math.random() * 0.8) + (Math.random() - 0.5) * 0.3,
+                life: 0.45 + Math.random() * 0.30,
+                startSize: (0.20 + Math.random() * 0.14) * trailScale,
+                endSize: (0.48 + Math.random() * 0.24) * trailScale,
+                type: 0,
+                color: Math.random() < 0.65 ? COLOR_PUFF_CREAM : COLOR_PUFF_PEACH,
+              });
+
+              // Twinkling 3D gold/ice-blue stardust sparkle
+              exhaustPool.spawn({
+                x: worldNozzlePos.x + (Math.random() - 0.5) * 0.16,
+                y: worldNozzlePos.y + (Math.random() - 0.5) * 0.16,
+                z: worldNozzlePos.z + (Math.random() - 0.5) * 0.16,
+                vx: worldDownDir.x * (1.2 + Math.random() * 1.1) + (Math.random() - 0.5) * 0.65,
+                vy: worldDownDir.y * (1.2 + Math.random() * 1.1) + (Math.random() - 0.5) * 0.65,
+                vz: worldDownDir.z * (1.2 + Math.random() * 1.1) + (Math.random() - 0.5) * 0.65,
+                life: 0.55 + Math.random() * 0.45,
+                startSize: (0.20 + Math.random() * 0.20) * Math.max(0.35, trailScale),
+                endSize: 0.06,
+                type: 1,
+                color: emitSparkleColor(),
+              });
+            }
+          }
+
+          if (state.stageTime >= STAGE_DUR.ROCKET_DIVE) {
+            rocket.root.visible = false;
+            state.stage = 'SINGULARITY_CHARGE';
+            state.stageTime = 0;
+          }
+        } else if (state.stage === 'SINGULARITY_CHARGE') {
+          // STAGE 2: Singularity Compression (0.75s)
+          state.stageTime += dt;
+          state.totalTime += dt;
+          showProgress = true;
+          centerParallax = true;
+          rocket.root.visible = false;
+
+          const p = clamp01(state.stageTime / STAGE_DUR.SINGULARITY_CHARGE);
+          const e = smoothQuint(p);
+
+          phaseText = '奇点收束';
+          progressPct = (state.totalTime / TOTAL_SEQ_DUR) * 100;
+
+          targetBhVis = 1.0;
+          targetBhWorldRadius = 1.38 * (1.0 - 0.24 * e + Math.sin(p * Math.PI * 2.0) * 0.045);
+          targetBhLens = 0.88 + 0.52 * e;
+          targetBhCharge = e;
+
+          targetCharge = e;
+          targetStretch = Math.pow(p, 3.0) * 0.04;
+          targetFov = BASE_FOV - (BASE_FOV - CHARGE_FOV) * e;
+          mainSpeed = THREE.MathUtils.lerp(0.85, 0.25, e);
+
+          if (state.stageTime >= STAGE_DUR.SINGULARITY_CHARGE) {
+            state.stage = 'BREAKTHROUGH';
+            state.stageTime = 0;
+          }
+        } else if (state.stage === 'BREAKTHROUGH') {
+          // STAGE 3: Spacetime Breakthrough (1.25s)
+          state.stageTime += dt;
+          state.totalTime += dt;
+          showProgress = true;
+          rocket.root.visible = false;
+
+          const p = clamp01(state.stageTime / STAGE_DUR.BREAKTHROUGH);
+          phaseText = '时空破壁';
+          progressPct = (state.totalTime / TOTAL_SEQ_DUR) * 100;
+
+          if (!state.firedEntryRipple && state.stageTime >= 0.03 * timeScale) {
+            state.firedEntryRipple = true;
+            triggerRipple(0, 1.05, 0.72);
+          }
+
+          const bhDissolve = 1.0 - smoothQuint(clamp01(p / 0.62));
+          targetBhVis = bhDissolve;
+          targetBhWorldRadius = 1.15 + easeOutExpo(p) * 5.2;
+          targetBhLens = bhDissolve * 0.95;
+          targetBhCharge = bhDissolve * 0.60;
+
+          const ignite = easeOutExpo(p);
+          const fovSweep = easeInOutCubic(p);
+
+          targetCharge = Math.max(0, 1.0 - p * 4.0);
+          targetWarp = ignite;
+          targetStretch = Math.pow(ignite, 0.90);
+          targetVeil = smoothQuint(clamp01((p - 0.14) / 0.86));
+          targetFov = CHARGE_FOV + (params.maxFov - CHARGE_FOV) * fovSweep;
+          mainSpeed = 0.6 + Math.pow(ignite, 1.32) * 172.0;
+
+          if (state.stageTime >= STAGE_DUR.BREAKTHROUGH) {
+            state.stage = 'CRUISE';
+            state.stageTime = 0;
+          }
+        } else if (state.stage === 'CRUISE') {
+          // STAGE 4: Serene Hyper-Cruise (4.6s, extendable by holding Spacebar or Canvas)
+          state.stageTime += dt;
+          if (!isExtendingCruise || state.stageTime < STAGE_DUR.CRUISE) {
+            state.totalTime += dt;
+          }
+          showProgress = true;
+          rocket.root.visible = false;
+
+          phaseText = isExtendingCruise ? '星海巡航 · 延长中' : '星海巡航';
+          progressPct = Math.min(76, (state.totalTime / TOTAL_SEQ_DUR) * 100);
+
+          targetWarp = 1.0;
+          targetStretch = 1.0;
+          targetVeil = 1.0;
+          targetFov = params.maxFov;
+          mainSpeed = 172.5;
+
+          // Midway through cruise, smoothly cross-fade starfield theme to next cosmic region
+          if (params.autoSwitchRealm && !state.switchedRealmThisJump && state.stageTime >= STAGE_DUR.CRUISE * 0.44) {
+            state.switchedRealmThisJump = true;
+            selectRealm(state.pendingRealmIndex, false);
+          }
+
+          if (state.stageTime >= STAGE_DUR.CRUISE && !isExtendingCruise) {
+            enterArrival();
+          }
+        } else if (state.stage === 'ARRIVE_RETURN') {
+          // STAGE 5: Arrival & 3D Rocket Portal Return (2.90s)
+          state.stageTime += dt;
+          state.totalTime += dt;
+          showProgress = true;
+
+          const p = clamp01(state.stageTime / STAGE_DUR.ARRIVE_RETURN);
+          phaseText = '抵达新星域';
+          progressPct = clamp01(76 + p * 24);
+
+          if (!state.firedExitRipple && state.stageTime >= 0.08 * timeScale) {
+            state.firedExitRipple = true;
+            triggerRipple(1, 0.78, 0.64);
+          }
+
+          // Decoupled head deceleration vs tail collapse -> pinprick stars with cross spikes
+          const headDecel = Math.pow(1.0 - p, 3.15);
+          const tailRetract = 1.0 - smoothQuint(clamp01(p / 0.82));
+
+          targetWarp = state.decelStartWarp * Math.pow(1.0 - p, 2.05);
+          targetStretch = state.decelStartStretch * tailRetract;
+          targetVeil = state.decelStartVeil * (1.0 - smoothQuint(clamp01(p / 0.56)));
+
+          // Gentle damped elastic FOV settle back to 54°
+          const elastic = Math.exp(-p * 4.35) * Math.cos(p * Math.PI * 1.15);
+          targetFov = BASE_FOV + (state.decelStartFov - BASE_FOV) * elastic;
+          mainSpeed = 2.6 + (169.5 * state.decelStartWarp) * headDecel;
+
+          // Final 0.95s: 3D glowing starlight portal ring blooms at idle spot & rocket pops back out!
+          const returnWindow = 0.95 * timeScale;
+          const returnStart = STAGE_DUR.ARRIVE_RETURN - returnWindow;
+          if (state.stageTime >= returnStart) {
+            const rp = clamp01((state.stageTime - returnStart) / returnWindow);
+
+            if (!state.firedReturnPortal) {
+              state.firedReturnPortal = true;
+              emitSparkleBurst3D(new THREE.Vector3(anchor.x, anchor.y, anchor.z), 22, 0.95, 0.95);
+              if (state.switchedRealmThisJump) {
+                applyRealmUI(params.realmIndex, true);
+              }
+            }
+
+            // Delicate 3D starlight portal ring tilted slightly toward viewer
+            portalMesh.visible = true;
+            portalMesh.position.set(anchor.x, anchor.y - 0.05, anchor.z - 0.05);
+            portalMesh.rotation.set(0.32, 0, elapsed * 0.9);
+            const pScale = anchor.scale * 2.45;
+            portalMesh.scale.set(pScale, pScale, 1);
+            portalUniforms.uTime.value = elapsed;
+            portalUniforms.uProgress.value = rp;
+
+            // Elastic spring pop-in (`easeOutBack`) + cheerful 360° Y-spin
+            const rocketRp = clamp01((rp - 0.08) / 0.92);
+            const spring = Math.max(0.001, easeOutBack(rocketRp));
+            const s = anchor.scale * spring;
+            rocket.root.visible = rocketRp > 0.001;
+            rocket.root.position.set(anchor.x, anchor.y + Math.sin(rocketRp * Math.PI) * 0.16, anchor.z);
+            rocket.root.rotation.order = 'YXZ';
+            rocket.root.rotation.set(0.05, (1.0 - smoothQuint(rocketRp)) * Math.PI * 2.0, Math.sin(rocketRp * Math.PI * 2) * 0.08 * (1 - rocketRp));
+            rocket.root.scale.set(s, s, s);
+
+            flamePower = 0.25 + (1.0 - rocketRp) * 0.45;
+            flameStretch = 0.72 + (1.0 - rocketRp) * 0.35;
+          } else {
+            rocket.root.visible = false;
+          }
+
+          if (state.stageTime >= STAGE_DUR.ARRIVE_RETURN) {
+            state.stage = 'HANDOFF';
+            state.stageTime = 0;
+            state.totalTime = TOTAL_SEQ_DUR;
+            portalMesh.visible = false;
+            rocket.root.visible = false;
+            elRocketCaption.classList.add('is-hidden');
+            document.body.classList.add('handoff-pending');
+            try {
+              const topWindow = window.top;
+              topWindow.sessionStorage.setItem('cosmos-to-galaxy-v2', JSON.stringify({
+                version: 2, origin: topWindow.location.origin, time: Date.now(),
+              }));
+              topWindow.setTimeout(() => topWindow.location.assign('/PhotoGallery/galaxy/'), testMode ? 100 : 780);
+            } catch (_error) {
+              window.location.assign('/PhotoGallery/galaxy/');
+            }
+          }
+        }
+
+        // Update 3D Rocket Flame Uniforms & Dynamic Nozzle PointLight
+        rocket.outerFlameUniforms.uTime.value = elapsed;
+        rocket.outerFlameUniforms.uFlamePower.value = flamePower;
+        rocket.outerFlameUniforms.uFlameStretch.value = flameStretch;
+
+        rocket.innerFlameUniforms.uTime.value = elapsed;
+        rocket.innerFlameUniforms.uFlamePower.value = flamePower;
+        rocket.innerFlameUniforms.uFlameStretch.value = flameStretch * 0.95;
+
+        const flicker = 0.90 + 0.10 * Math.sin(elapsed * 28.0);
+        rocket.nozzleLight.intensity = (0.85 + flamePower * 1.95) * flicker;
+        rocket.emberMat.color.setRGB(
+          1.0,
+          Math.min(1.0, 0.72 + flamePower * 0.18),
+          Math.min(1.0, 0.42 + flamePower * 0.28)
+        );
+
+        // Smooth inertial filtering across optical & warp parameters
+        const fastEase = 1.0 - Math.exp(-dt * 10.5);
+        const fovEase = 1.0 - Math.exp(-dt * 8.8);
+        const bhEase = 1.0 - Math.exp(-dt * 9.5);
+
+        state.warpIntensity += (targetWarp - state.warpIntensity) * fastEase;
+        state.chargeIntensity += (targetCharge - state.chargeIntensity) * fastEase;
+        state.streakNorm += (targetStretch - state.streakNorm) * (1.0 - Math.exp(-dt * 11.8));
+        state.veilEnv += (targetVeil - state.veilEnv) * (1.0 - Math.exp(-dt * 7.2));
+        state.fov += (targetFov - state.fov) * fovEase;
+
+        state.bhVisibility += (targetBhVis - state.bhVisibility) * bhEase;
+        state.bhWorldRadius += (targetBhWorldRadius - state.bhWorldRadius) * bhEase;
+        state.bhLensStrength += (targetBhLens - state.bhLensStrength) * bhEase;
+        state.bhChargePulse += (targetBhCharge - state.bhChargePulse) * bhEase;
+        state.bhAbsorbPulse *= Math.exp(-dt * 4.2);
+        if (state.bhAbsorbPulse < 0.001) state.bhAbsorbPulse = 0;
+
+        // Clean snap to exact 0 at rest for razor-sharp stationary stars
+        const isIdle = state.stage === 'IDLE';
+        const cleanWarp = state.warpIntensity < 0.0008 && isIdle ? 0.0 : state.warpIntensity;
+        const cleanStretch = state.streakNorm < 0.0005 && isIdle ? 0.0 : state.streakNorm;
+        const cleanBhVis = state.bhVisibility < 0.001 && isIdle ? 0.0 : state.bhVisibility;
+        const cleanBhLens = state.bhLensStrength < 0.001 && isIdle ? 0.0 : state.bhLensStrength;
+
+        updatePhaseHUD(phaseText, showProgress, progressPct);
+        window.__ROCKET_WARP_STAGE__ = state.stage;
+
+        // 3) Advance Breakthrough & Arrival Lensing Ripples
+        for (let i = 0; i < 2; i++) {
+          const r = ripples[i];
+          if (r.active) {
+            r.progress += dt * r.speed;
+            if (r.progress >= 1.0) {
+              r.active = false;
+              r.progress = 0;
+              r.strength = 0;
+            }
+          }
+        }
+
+        // 4) Advance All 3 Dynamic Star Layers Continuously (ZERO Frozen Background Stars!)
+        const deepSpeed = 0.72 + Math.max(0, mainSpeed - 2.6) * params.bgStarSpeed;
+        state.deepTravel += deepSpeed * dt;
+        state.mainTravel += mainSpeed * dt;
+        state.flybyTravel += mainSpeed * dt;
+        state.veilFlow += (0.35 + cleanWarp * 5.4) * dt;
+        state.nebulaDrift += (0.05 + cleanWarp * 0.90) * dt;
+
+        // 5) Camera Dynamic FOV & Smooth Mouse Parallax (Zero Jitter / Zero Shake!)
+        camera.fov = state.fov;
+        camera.updateProjectionMatrix();
+
+        const targetPtrX = centerParallax ? 0.0 : state.pointerTarget.x;
+        const targetPtrY = centerParallax ? 0.0 : state.pointerTarget.y;
+        const ptrDamp = 1.0 - Math.exp(-dt * (centerParallax ? 5.2 : 3.2));
+        state.pointerSmooth.x += (targetPtrX - state.pointerSmooth.x) * ptrDamp;
+        state.pointerSmooth.y += (targetPtrY - state.pointerSmooth.y) * ptrDamp;
+
+        const sereneBank = Math.sin(elapsed * 0.32) * 0.018 * cleanWarp;
+        const maxLookRad = THREE.MathUtils.degToRad(4.2);
+
+        camera.position.x = state.pointerSmooth.x * 0.65;
+        camera.position.y = state.pointerSmooth.y * 0.48;
+        camera.position.z = 0;
+        camera.rotation.order = 'YXZ';
+        camera.rotation.y = -state.pointerSmooth.x * maxLookRad;
+        camera.rotation.x = state.pointerSmooth.y * (maxLookRad * 0.82);
+        camera.rotation.z = -state.pointerSmooth.x * 0.020 + sereneBank;
+        camera.updateMatrixWorld();
+
+        camera.matrixWorld.extractBasis(camRight, camUp, camForward);
+        camForward.negate();
+
+        // Project tunnel vanishing point AND exact 3D Black Hole anchor (0, 0.25, -14.5) through camera!
+        const aspect = camera.aspect;
+        const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(state.fov * 0.5));
+
+        vanishingNDC.copy(vanishingWorld).project(camera);
+        vanishingUvVec.set(
+          THREE.MathUtils.clamp(vanishingNDC.x * 0.5 + 0.5, 0.14, 0.86),
+          THREE.MathUtils.clamp(vanishingNDC.y * 0.5 + 0.5, 0.14, 0.86)
+        );
+        backdropUniforms.uVanishingOffset.value.set(
+          (vanishingUvVec.x - 0.5) * aspect,
+          vanishingUvVec.y - 0.5
+        );
+
+        bhNDC.copy(BH_ANCHOR).project(camera);
+        blackHoleUvVec.set(bhNDC.x * 0.5 + 0.5, bhNDC.y * 0.5 + 0.5);        bhViewPos.copy(BH_ANCHOR).applyMatrix4(camera.matrixWorldInverse);
+        const bhViewDist = Math.max(-bhViewPos.z, 1.0);
+        const bhScreenScale = state.bhWorldRadius / (2.0 * bhViewDist * tanHalfFov);
+
+        // Update 3D Exhaust Particles in rocketScene
+        exhaustPool.update(dt, window.innerHeight, state.fov, getDPR());
+
+        // 6) Sync Uniforms Across Backdrop, All 3 Dynamic Star Layers & Post Passes
+        backdropUniforms.uTime.value = elapsed;
+        backdropUniforms.uDrift.value = state.nebulaDrift;
+        backdropUniforms.uFlow.value = state.veilFlow;
+        backdropUniforms.uWarp.value = cleanWarp;
+        backdropUniforms.uVeilOpacity.value = state.veilEnv * params.spacetimeVeil;
+        backdropUniforms.uTanHalfFov.value = tanHalfFov;
+        backdropUniforms.uCamRight.value.copy(camRight);
+        backdropUniforms.uCamUp.value.copy(camUp);
+        backdropUniforms.uCamForward.value.copy(camForward);
+
+        layer1Deep.uniforms.uTime.value = elapsed;
+        layer1Deep.uniforms.uTravelDist.value = state.deepTravel;
+        layer1Deep.uniforms.uStretchWorld.value = cleanStretch * 38.0 * params.streakLength * (0.65 + params.bgStarSpeed * 1.45);
+        layer1Deep.uniforms.uWarpMix.value = cleanWarp;
+        layer1Deep.uniforms.uCharge.value = state.chargeIntensity;
+
+        layer2Main.uniforms.uTime.value = elapsed;
+        layer2Main.uniforms.uTravelDist.value = state.mainTravel;
+        layer2Main.uniforms.uStretchWorld.value = cleanStretch * 96.0 * params.streakLength;
+        layer2Main.uniforms.uWarpMix.value = cleanWarp;
+        layer2Main.uniforms.uCharge.value = state.chargeIntensity;
+        layer2Main.uniforms.uDensityCutoff.value = params.streamDensity;
+
+        layer3Flyby.uniforms.uTime.value = elapsed;
+        layer3Flyby.uniforms.uTravelDist.value = state.flybyTravel;
+        layer3Flyby.uniforms.uStretchWorld.value = cleanStretch * 132.0 * params.streakLength;
+        layer3Flyby.uniforms.uWarpMix.value = cleanWarp;
+        layer3Flyby.uniforms.uCharge.value = state.chargeIntensity;
+
+        // Pass 2 Black Hole + Lensing + Ripples uniforms
+        lensingBHUniforms.uTime.value = elapsed;
+        lensingBHUniforms.uBlackHoleScale.value = bhScreenScale;
+        lensingBHUniforms.uBlackHoleVis.value = cleanBhVis;
+        lensingBHUniforms.uBlackHoleLens.value = cleanBhLens;
+        lensingBHUniforms.uChargePulse.value = state.bhChargePulse;
+        lensingBHUniforms.uAbsorbPulse.value = state.bhAbsorbPulse;
+        lensingBHUniforms.uRippleScale.value = params.rippleStrength;
+        lensingBHUniforms.uRipple1.value.set(ripples[0].progress, ripples[0].strength);
+        lensingBHUniforms.uRipple2.value.set(ripples[1].progress, ripples[1].strength);
+
+        // Pass 6 Final Composite uniforms
+        const fovNorm = clamp01((state.fov - BASE_FOV) / Math.max(params.maxFov - BASE_FOV, 1));
+        compositeUniforms.uWarp.value = cleanWarp;
+        compositeUniforms.uFovNorm.value = fovNorm;
+        compositeUniforms.uBloomStrength.value = params.bloomGlow;
+        compositeUniforms.uChromatic.value = params.chromatic;
+        compositeUniforms.uTime.value = elapsed;
+        fxaaUniforms.uTime.value = elapsed;
+
+        // ========================================================================
+        // 7) EXECUTE 7-PASS HDR + 4x MSAA + SELECTIVE FXAA PIPELINE
+        // ========================================================================
+        // Pass 1: Render spaceScene (Nebula + Veil + 3 Dynamic SDF Star Layers) -> spaceRT
+        renderer.setRenderTarget(spaceRT);
+        renderer.clear(true, false, false);
+        renderer.render(spaceScene, camera);
+
+        // Pass 2: Full-screen Gravitational Lensing + Black Hole + Warp Ripples -> sceneRT
+        renderer.setRenderTarget(sceneRT);
+        renderer.clear(true, true, false);
+        postQuad.material = lensingBHMat;
+        renderer.render(postScene, postCamera);
+
+        // Pass 3: Clear depth buffer & render 3D Q-Rocket + 3D Flames + 3D Sparkles + Portal into sceneRT
+        renderer.clearDepth();
+        renderer.render(rocketScene, camera);
+
+        // Pass 4: Soft-Threshold HDR Bright Extract -> brightRT
+        postQuad.material = brightMat;
+        renderer.setRenderTarget(brightRT);
+        renderer.render(postScene, postCamera);
+
+        // Pass 5: Dual-Scale Black Pro-Mist Separable Gaussian Bloom
+        postQuad.material = blurMat;
+
+        // Tight Star & Rocket Rim Glow (1/2 resolution)
+        blurUniforms.uTexelSize.value.set(1 / bloomHalfA.width, 1 / bloomHalfA.height);
+        blurUniforms.tDiffuse.value = brightRT.texture;
+        blurUniforms.uDirection.value.set(1.10, 0.0);
+        renderer.setRenderTarget(bloomHalfB);
+        renderer.render(postScene, postCamera);
+
+        blurUniforms.tDiffuse.value = bloomHalfB.texture;
+        blurUniforms.uDirection.value.set(0.0, 1.10);
+        renderer.setRenderTarget(bloomHalfA);
+        renderer.render(postScene, postCamera);
+
+        // Wide Atmospheric Halo (1/4 resolution, 2 smooth iterations)
+        blurUniforms.uTexelSize.value.set(1 / bloomQuarterA.width, 1 / bloomQuarterA.height);
+        blurUniforms.tDiffuse.value = bloomHalfA.texture;
+        blurUniforms.uDirection.value.set(1.60, 0.0);
+        renderer.setRenderTarget(bloomQuarterB);
+        renderer.render(postScene, postCamera);
+
+        blurUniforms.tDiffuse.value = bloomQuarterB.texture;
+        blurUniforms.uDirection.value.set(0.0, 1.60);
+        renderer.setRenderTarget(bloomQuarterA);
+        renderer.render(postScene, postCamera);
+
+        blurUniforms.tDiffuse.value = bloomQuarterA.texture;
+        blurUniforms.uDirection.value.set(2.40, 0.0);
+        renderer.setRenderTarget(bloomQuarterB);
+        renderer.render(postScene, postCamera);
+
+        blurUniforms.tDiffuse.value = bloomQuarterB.texture;
+        blurUniforms.uDirection.value.set(0.0, 2.40);
+        renderer.setRenderTarget(bloomQuarterA);
+        renderer.render(postScene, postCamera);
+
+        // Pass 6: HDR Bloom + Hue-Preserving ACES Tonemap -> tonemapRT (preserves rocket alpha mask)
+        postQuad.material = compositeMat;
+        renderer.setRenderTarget(tonemapRT);
+        renderer.render(postScene, postCamera);
+
+        // Pass 7: Selective Post-Tonemap FXAA 3.11 (smooths 3D rocket edges, keeps 1px stars crisp) -> Screen
+        postQuad.material = fxaaMat;
+        renderer.setRenderTarget(null);
+        renderer.render(postScene, postCamera);
+      }
+
+      // Initialize UI accent & launch 60FPS loop
+      applyRealmUI(params.realmIndex, false);
+      window.__ROCKET_WARP_READY__ = true;
+      window.__ROCKET_WARP_STAGE__ = state.stage;
+      rafId = requestAnimationFrame(animate);
+    }
+
+    if (document.readyState === 'complete') {
+      initApp();
+    } else {
+      window.addEventListener('load', initApp, { once: true });
+    }
+  </script>
+</body>
+</html>

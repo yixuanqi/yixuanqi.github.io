@@ -24,6 +24,22 @@ async function waitForServer() {
   throw new Error("Local portal HTTP server failed to start");
 }
 
+async function waitForRocketFrame(page) {
+  await page.waitForFunction(() => {
+    const frame = document.getElementById("rocket-warp-frame");
+    return Boolean(frame?.contentWindow?.__ROCKET_WARP_READY__ || frame?.contentWindow?.__ROCKET_WARP_ERROR__);
+  }, null, { timeout: 45000 });
+  const frame = page.frame({ url: /assets\/rocket-warp\.html/ });
+  assert.ok(frame, "same-origin 3D rocket frame must be available");
+  await frame.waitForFunction(() => window.__ROCKET_WARP_READY__ === true || Boolean(window.__ROCKET_WARP_ERROR__), null, { timeout: 45000 });
+  const status = await frame.evaluate(() => ({
+    ready: window.__ROCKET_WARP_READY__ === true,
+    error: window.__ROCKET_WARP_ERROR__ || ""
+  }));
+  assert.equal(status.ready, true, "3D rocket/black-hole WebGL engine failed: " + status.error);
+  return frame;
+}
+
 try {
   await waitForServer();
   const chrome = process.env.CHROME_BIN || "/usr/bin/google-chrome";
@@ -47,35 +63,38 @@ try {
     page.on("popup", popup => popups.push(popup));
     await page.route("https://yixuanqi.github.io/PhotoGallery/projects.json**", route =>
       route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(catalog)}));
-    await page.route("**/PhotoGallery/galaxy/**", route =>
-      route.fulfill({status:200,contentType:"text/html",body:"<!doctype html><title>Galaxy route test</title><main id='galaxy-test-destination'>GALAXY_TEST_DESTINATION</main>"}));
     await page.goto(origin,{waitUntil:"load",timeout:45000});
-    await page.waitForFunction(()=>window.__COSMOS_READY__===true||Boolean(window.__COSMOS_ERROR__),null,{timeout:30000});
+    const rocketFrame = await waitForRocketFrame(page);
     await page.waitForFunction(()=>document.querySelectorAll(".project-card").length===12,null,{timeout:20000});
-    await page.evaluate(()=>document.fonts.ready);
-    await page.waitForTimeout(600);
-    const status=await page.evaluate(()=>({ready:window.__COSMOS_READY__===true,error:window.__COSMOS_ERROR__||""}));
-    assert.equal(status.ready,true,viewport.name+" V5 WebGL engine failed: "+status.error);
-    assert.equal(await page.locator("#warp-trigger-btn").count(),1,"Exactly one portal CTA");
-    assert.equal(await page.locator("#blackhole-gate").count(),1,"One gravitational-lensing black hole must exist");
-    assert.equal(await page.locator(".rocket-float .rocket-ship").count(),1,"The floating rocket must be rendered as an SVG ship");
-    assert.equal(await page.locator(".rocket-flame-outer").count(),1,"The rocket must have a visible engine flame");
-    assert.equal(await page.locator(".warp-pill").count(),0,"The old capsule CTA must not return");
-    assert.equal((await page.locator("#warp-trigger-btn").innerText()).trim(),"星海漫游","CTA label stays minimal");
-    assert.equal(await page.locator(".hero-copy,.eyebrow,.hero-description,.hero-footnote,.hero-bottom-mark,.hero-actions").count(),0,"Hero copy and secondary actions must be removed");
-    assert.equal(await page.locator(".header-portal").count(),0,"Duplicate header portal must be absent");
+    await rocketFrame.evaluate(()=>document.fonts.ready.then(()=>true));
+    await page.waitForTimeout(350);
+
+    assert.equal(await page.locator("#rocket-warp-frame").count(),1,"Exactly one isolated rocket scene");
+    assert.equal(await page.locator("#cosmos-canvas").count(),0,"Parent page must not run a duplicate WebGL canvas");
+    assert.equal(await rocketFrame.locator("#cosmos-canvas").count(),1,"Reference scene owns exactly one WebGL canvas");
+    assert.equal((await rocketFrame.locator("#caption-main").innerText()).trim(),"星海漫游","Hero keeps only the single 星海漫游 label");
+    assert.equal(await rocketFrame.locator("#hud-root > div:first-child").evaluate(el=>getComputedStyle(el).display),"none","Reference tuning/status HUD stays hidden");
+    assert.equal(await rocketFrame.locator("#rocket-caption > span:nth-child(2)").evaluate(el=>getComputedStyle(el).display),"none","No extra helper copy is visible");
+    assert.equal(await rocketFrame.locator("#handoff-curtain").count(),1,"A handoff curtain must cover the final transition");
+
     const measured=await page.evaluate(()=>{
-      const hero=document.querySelector(".hero").getBoundingClientRect();
-      const button=document.getElementById("warp-trigger-btn").getBoundingClientRect();
-      const canvas=document.getElementById("cosmos-canvas");
-      const gl=canvas.getContext("webgl2")||canvas.getContext("webgl");
-      return {heroHeight:hero.height,buttonLeft:button.left,buttonRight:button.right,buttonTop:button.top,buttonBottom:button.bottom,canvasWidth:canvas.width,canvasHeight:canvas.height,webglContext:Boolean(gl),hasHorizontalOverflow:document.documentElement.scrollWidth>innerWidth+2};
+      const frame=document.getElementById("rocket-warp-frame");
+      const rect=frame.getBoundingClientRect();
+      const canvas=frame.contentWindow.document.getElementById("cosmos-canvas");
+      return {
+        frameLeft:rect.left,frameRight:rect.right,frameTop:rect.top,frameBottom:rect.bottom,
+        canvasWidth:canvas.width,canvasHeight:canvas.height,
+        webglContext:Boolean(canvas.getContext("webgl2")||canvas.getContext("webgl")),
+        hasHorizontalOverflow:document.documentElement.scrollWidth>innerWidth+2
+      };
     });
     assert.equal(measured.hasHorizontalOverflow,false,viewport.name+" horizontal overflow");
-    assert.ok(measured.buttonLeft>=0&&measured.buttonRight<=viewport.width+1,viewport.name+" CTA outside viewport");
+    assert.ok(measured.frameLeft<=1&&measured.frameRight>=viewport.width-1,viewport.name+" scene must be full bleed");
     assert.ok(measured.canvasWidth>0&&measured.canvasHeight>0&&measured.webglContext,viewport.name+" WebGL canvas inactive");
     assert.deepEqual(errors,[],viewport.name+" uncaught browser errors");
-    await page.screenshot({path:resolve("screenshots",viewport.name+".png")});
+    assert.deepEqual(popups,[],viewport.name+" must not open popups");
+    await page.screenshot({path:resolve("screenshots",viewport.name+".png"),fullPage:false});
+
     if(viewport.name==="desktop"){
       const search=page.locator("#project-search");
       await search.fill("引力透镜");
@@ -87,34 +106,36 @@ try {
     console.log(viewport.name+" viewport:",JSON.stringify(measured));
     await page.close();
   }
+
   const warpPage = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const warpErrors = [];
   const warpPopups = [];
+  await warpPage.addInitScript(() => { window.__ROCKET_WARP_TEST_MODE__ = true; });
   warpPage.on("pageerror", error => warpErrors.push(error.message));
   warpPage.on("popup", popup => warpPopups.push(popup));
-  await warpPage.addInitScript(() => { window.__COSMOS_TEST_MODE__ = true; });
   await warpPage.route("https://yixuanqi.github.io/PhotoGallery/projects.json**", route =>
     route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(catalog)}));
   await warpPage.route("**/PhotoGallery/galaxy/**", route =>
     route.fulfill({status:200,contentType:"text/html",body:"<!doctype html><title>Galaxy route test</title><main id='galaxy-test-destination'>GALAXY_TEST_DESTINATION</main>"}));
   await warpPage.goto(origin,{waitUntil:"load",timeout:45000});
-  await warpPage.waitForFunction(()=>window.__COSMOS_READY__===true||Boolean(window.__COSMOS_ERROR__),null,{timeout:30000});
-  const warpEngineStatus=await warpPage.evaluate(()=>({ready:window.__COSMOS_READY__===true,error:window.__COSMOS_ERROR__||""}));
-  assert.equal(warpEngineStatus.ready,true,"Fast warp test WebGL engine failed: "+warpEngineStatus.error);
-  await warpPage.locator("#warp-trigger-btn").click({force:true});
-  await warpPage.waitForFunction(()=>window.__COSMOS_WARP_STARTED__===true,null,{timeout:2000});
-  assert.equal(await warpPage.evaluate(()=>document.body.classList.contains("rocket-launching")),true,"Rocket approach must start before warp");
-  await warpPage.waitForFunction(()=>document.body.classList.contains("rocket-in-warp"),null,{timeout:6000});
+  const warpFrame = await waitForRocketFrame(warpPage);
+  await warpPage.waitForTimeout(250);
+  const rocketPoint = await warpFrame.evaluate(()=>window.__ROCKET_WARP_DEBUG__.getRocketScreenPoint());
+  assert.ok(rocketPoint.x>0&&rocketPoint.x<1440&&rocketPoint.y>0&&rocketPoint.y<900,"3D rocket raycast point must be on screen");
+  await warpFrame.locator("#cosmos-canvas").click({position:{x:rocketPoint.x,y:rocketPoint.y},force:true});
+  await warpPage.waitForFunction(()=>document.body.classList.contains("rocket-launching"),null,{timeout:3000});
+  await warpFrame.waitForFunction(()=>window.__ROCKET_WARP_STARTED__===true,null,{timeout:3000});
   await warpPage.waitForURL(url=>new URL(url).pathname===galaxyPath,{timeout:20000});
   assert.equal(new URL(warpPage.url()).origin,origin,"Warp navigation stays in the same tab and origin");
   assert.equal(warpPopups.length,0,"Warp must not open a new tab");
-  assert.equal(await warpPage.locator("#galaxy-test-destination").count(),1,"V5 warp reaches the galaxy route");
-  const handoff = JSON.parse(await warpPage.evaluate(()=>sessionStorage.getItem("cosmos-to-galaxy-v2")) || "null");
+  assert.equal(await warpPage.locator("#galaxy-test-destination").count(),1,"3D warp reaches the galaxy route");
+  const handoff=JSON.parse(await warpPage.evaluate(()=>sessionStorage.getItem("cosmos-to-galaxy-v2"))||"null");
   assert.equal(handoff?.version,2,"Same-tab galaxy arrival handshake must be present");
   assert.equal(handoff?.origin,origin,"Arrival handshake must be scoped to the source origin");
+  assert.ok(Number.isFinite(handoff?.time)&&Date.now()-handoff.time<45000,"Arrival handshake must be fresh");
   assert.deepEqual(warpErrors,[],"Warp page must not throw browser errors");
   await warpPage.close();
-  console.log("PASS: V5 WebGL scene, minimal CTA, same-tab warp navigation, and catalog regression.");
+  console.log("PASS: reference 3D rocket raycast, GLSL black hole, five-stage warp, same-tab galaxy handoff, and catalog regression.");
 } finally {
   if(browser) await browser.close();
   server.kill("SIGTERM");
