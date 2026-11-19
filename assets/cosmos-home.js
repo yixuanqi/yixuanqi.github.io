@@ -842,7 +842,8 @@
         return;
       }
 
-      const getDPR = () => Math.min(window.devicePixelRatio || 1, window.innerWidth < 700 ? 1.5 : 2);
+      const testMode = window.__COSMOS_TEST_MODE__ === true;
+      const getDPR = () => Math.min(window.devicePixelRatio || 1, testMode ? 1 : (window.innerWidth < 700 ? 1.5 : 2));
       renderer.setPixelRatio(getDPR());
       renderer.setSize(window.innerWidth, window.innerHeight, false);
       renderer.autoClear = false;
@@ -890,7 +891,7 @@
 
       const resolutionVec = new THREE.Vector2(initW, initH);
       const vanishingUvVec = new THREE.Vector2(0.5, 0.5);
-      const starBudget = window.innerWidth < 700 ? 0.62 : 1.0;
+      const starBudget = testMode ? 0.22 : (window.innerWidth < 700 ? 0.62 : 1.0);
 
       // --------------------------------------------------------------------------
       // Backdrop: Deep Velvet Nebula Sky Dome + Translucent Spacetime Silk Veil
@@ -1215,11 +1216,13 @@
       // ==========================================================================
       // 5. ASYMMETRIC 4-STAGE WARP RHYTHM (10.5s AUTO + MANUAL HOLD SPACE/CANVAS)
       // ==========================================================================
+      // Test-only acceleration is enabled exclusively by the browser smoke harness.
+      const warpTimeScale = testMode ? 0.02 : 1.0;
       const STAGE_DUR = {
-        CHARGE: 1.5,       // 0.0–1.5s: Subtle brighten, FOV 54° -> 46°, zero shake
-        BREAKTHROUGH: 1.3, // 1.5–2.8s: Exponential surge, Ripple #1, FOV 46° -> 110°
-        CRUISE: 4.6,       // 2.8–7.4s: Serene high-speed cruise, all 3 layers flow, realm crossfade
-        DECEL: 3.1,        // 7.4–10.5s: Heads stop first -> tails collapse to pinpoint stars, Ripple #2
+        CHARGE: 1.5 * warpTimeScale,       // Production: 1.5s
+        BREAKTHROUGH: 1.3 * warpTimeScale, // Production: 1.3s
+        CRUISE: 4.6 * warpTimeScale,       // Production: 4.6s
+        DECEL: 3.1 * warpTimeScale,        // Production: 3.1s
       };
       const TOTAL_AUTO_DUR = STAGE_DUR.CHARGE + STAGE_DUR.BREAKTHROUGH + STAGE_DUR.CRUISE + STAGE_DUR.DECEL;
 

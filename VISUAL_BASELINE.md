@@ -43,3 +43,4 @@ After the transition, navigate in the **same tab** to `/PhotoGallery/galaxy/` us
 - Do not alter V5 shaders or stage timings without updating this baseline and browser tests.
 - Validate desktop/mobile WebGL initialization, CTA visibility, horizontal overflow, catalog loading/search/filtering, and same-tab navigation.
 - CI smoke tests must enable WebGL and verify the destination without a popup.
+- The smoke harness may set `window.__COSMOS_TEST_MODE__` to reduce render load and warp durations; production timings remain unchanged.

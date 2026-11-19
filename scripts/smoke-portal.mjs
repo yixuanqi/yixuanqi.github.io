@@ -79,16 +79,32 @@ try {
       await search.fill("");
       await page.locator('button[data-category="simulation"]').click();
       assert.ok(await page.locator(".project-card").count()>=2,"Simulation filter works");
-      await page.locator("#warp-trigger-btn").click({ force: true });
-      await page.waitForFunction(()=>document.body.classList.contains("is-warping"),null,{timeout:2000});
-      await page.waitForURL(url=>new URL(url).pathname===galaxyPath,{timeout:30000});
-      assert.equal(new URL(page.url()).origin,origin,"Navigation stays in same tab and origin");
-      assert.equal(popups.length,0,"No new tab may be opened");
-      assert.equal(await page.locator("#galaxy-test-destination").count(),1,"Warp reaches galaxy route");
     }
     console.log(viewport.name+" viewport:",JSON.stringify(measured));
     await page.close();
   }
+  const warpPage = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+  const warpErrors = [];
+  const warpPopups = [];
+  warpPage.on("pageerror", error => warpErrors.push(error.message));
+  warpPage.on("popup", popup => warpPopups.push(popup));
+  await warpPage.addInitScript(() => { window.__COSMOS_TEST_MODE__ = true; });
+  await warpPage.route("https://yixuanqi.github.io/PhotoGallery/projects.json**", route =>
+    route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(catalog)}));
+  await warpPage.route("**/PhotoGallery/galaxy/**", route =>
+    route.fulfill({status:200,contentType:"text/html",body:"<!doctype html><title>Galaxy route test</title><main id='galaxy-test-destination'>GALAXY_TEST_DESTINATION</main>"}));
+  await warpPage.goto(origin,{waitUntil:"load",timeout:45000});
+  await warpPage.waitForFunction(()=>window.__COSMOS_READY__===true||Boolean(window.__COSMOS_ERROR__),null,{timeout:30000});
+  const warpEngineStatus=await warpPage.evaluate(()=>({ready:window.__COSMOS_READY__===true,error:window.__COSMOS_ERROR__||""}));
+  assert.equal(warpEngineStatus.ready,true,"Fast warp test WebGL engine failed: "+warpEngineStatus.error);
+  await warpPage.locator("#warp-trigger-btn").click({force:true});
+  await warpPage.waitForFunction(()=>window.__COSMOS_WARP_STARTED__===true,null,{timeout:2000});
+  await warpPage.waitForURL(url=>new URL(url).pathname===galaxyPath,{timeout:20000});
+  assert.equal(new URL(warpPage.url()).origin,origin,"Warp navigation stays in the same tab and origin");
+  assert.equal(warpPopups.length,0,"Warp must not open a new tab");
+  assert.equal(await warpPage.locator("#galaxy-test-destination").count(),1,"V5 warp reaches the galaxy route");
+  assert.deepEqual(warpErrors,[],"Warp page must not throw browser errors");
+  await warpPage.close();
   console.log("PASS: V5 WebGL scene, minimal CTA, same-tab warp navigation, and catalog regression.");
 } finally {
   if(browser) await browser.close();
