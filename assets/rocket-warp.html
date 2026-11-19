@@ -1035,7 +1035,8 @@
                + uStar3 * aColorWeights.w;
         vAlpha = farFade * nearFade * emergenceGate * aFlags.z * densityVis * chargeLift;
         vTwinkle = mix(twinkle, 0.92 + 0.08 * tw1, streakWeight);
-        vHasSpike = aFlags.x;        vWarpMix = max(uWarpMix, streakWeight);
+        vHasSpike = aFlags.x;
+        vWarpMix = max(uWarpMix, streakWeight);
         vHeadClipped = headClipped;
         vDirPx = dirPx;
       }
@@ -2034,7 +2035,8 @@
       cabinStarMesh.position.set(0.0, 0.0, 0.022);
       portholeGroup.add(cabinStarMesh);
 
-      // Gently domed crystal-clear sky-blue glass lens with soft specular reflection      const glassGeo = new THREE.SphereGeometry(0.228, 36, 22, 0, Math.PI * 2, 0, Math.PI * 0.46);
+      // Gently domed crystal-clear sky-blue glass lens with soft specular reflection
+      const glassGeo = new THREE.SphereGeometry(0.228, 36, 22, 0, Math.PI * 2, 0, Math.PI * 0.46);
       glassGeo.rotateX(Math.PI * 0.5);
       glassGeo.scale(1, 1, 0.42);
       const glassMat = new THREE.MeshPhysicalMaterial({
@@ -3037,7 +3039,8 @@
         warpIntensity: 0,
         chargeIntensity: 0,
         streakNorm: 0,
-        veilEnv: 0,        fov: BASE_FOV,
+        veilEnv: 0,
+        fov: BASE_FOV,
 
         // Black hole live parameters
         bhVisibility: 0,
@@ -4062,7 +4065,8 @@
         );
 
         bhNDC.copy(BH_ANCHOR).project(camera);
-        blackHoleUvVec.set(bhNDC.x * 0.5 + 0.5, bhNDC.y * 0.5 + 0.5);        bhViewPos.copy(BH_ANCHOR).applyMatrix4(camera.matrixWorldInverse);
+        blackHoleUvVec.set(bhNDC.x * 0.5 + 0.5, bhNDC.y * 0.5 + 0.5);
+        bhViewPos.copy(BH_ANCHOR).applyMatrix4(camera.matrixWorldInverse);
         const bhViewDist = Math.max(-bhViewPos.z, 1.0);
         const bhScreenScale = state.bhWorldRadius / (2.0 * bhViewDist * tanHalfFov);
 
