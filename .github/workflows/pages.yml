@@ -42,6 +42,19 @@ jobs:
       - name: Validate portal and published project catalog
         run: node scripts/validate-portal.mjs
 
+      - name: Browser smoke test (desktop and mobile)
+        run: |
+          npm install --no-save --no-package-lock playwright-core@1.56.1
+          CHROME_BIN="$(command -v google-chrome || command -v chromium)" node scripts/smoke-portal.mjs
+
+      - name: Preserve browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-smoke-screenshots
+          path: screenshots/
+          if-no-files-found: ignore
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:
