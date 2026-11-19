@@ -3962,7 +3962,7 @@
             elRocketCaption.classList.add('is-hidden');
 
             // Project the actual 3D portal anchor into viewport coordinates.
-            // The rocket rests around 75% viewport height, not at screen center.
+            // Camera parallax can move the exit point; transfer its actual projected position.
             const portalScreen = new THREE.Vector3(anchor.x, anchor.y - 0.05, anchor.z - 0.05).project(camera);
             const portalX = THREE.MathUtils.clamp((portalScreen.x * 0.5 + 0.5) * 100, 8, 92);
             const portalY = THREE.MathUtils.clamp((0.5 - portalScreen.y * 0.5) * 100, 8, 92);
