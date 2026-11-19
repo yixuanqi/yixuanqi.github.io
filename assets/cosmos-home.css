@@ -35,3 +35,124 @@ body.cosmos-fallback #cosmos-canvas{display:none}
  #cosmos-vignette::after{inset:8px;border-radius:10px 42px 10px 42px/42px 10px 42px 10px}
 }
 @media(prefers-reduced-motion:reduce){.warp-pill:not(.is-warping),.dot-breathe{animation:none}.warp-pill,#warp-progress-bar{transition-duration:.01ms}}
+
+
+/* The hero is now a launch scene. The V5 shaders and cosmic colors remain intact. */
+#blackhole-gate{
+  position:absolute;z-index:1;left:66%;top:32%;
+  width:clamp(160px,19vw,272px);aspect-ratio:1;
+  transform:translate(-50%,-50%);
+  opacity:.97;pointer-events:none;filter:drop-shadow(0 0 27px rgba(63,145,211,.16));
+  animation:blackhole-hover 12s ease-in-out infinite alternate;
+  transition:opacity .7s ease,filter .6s ease;
+}
+.blackhole-skywarp{position:absolute;inset:-37%;border-radius:50%;
+  background:radial-gradient(circle,transparent 18%,rgba(40,93,155,.055) 34%,rgba(99,158,216,.08) 40%,transparent 66%);
+  transform:rotate(-25deg) scaleY(.76);filter:blur(11px);
+}
+.blackhole-shadow{
+  position:absolute;z-index:3;inset:25%;border-radius:50%;
+  background:radial-gradient(circle at 52% 51%,#000103 0 66%,#02070e 77%,#0b1b28 86%,rgba(25,65,94,.48) 95%,transparent 100%);
+  box-shadow:0 0 18px 3px rgba(5,19,36,.8),0 0 0 1px rgba(196,224,247,.48),0 0 16px 7px rgba(124,191,236,.12);
+}
+.blackhole-disk{
+  position:absolute;left:8%;right:8%;top:35%;height:31%;
+  border-radius:50%;transform:rotate(-24deg);
+  background:conic-gradient(from 65deg,transparent 0deg,rgba(108,161,211,.04) 35deg,
+    rgba(124,194,241,.50) 96deg,#f3d2a2 137deg,rgba(97,171,230,.48) 202deg,
+    transparent 250deg,rgba(239,183,129,.55) 312deg,transparent 356deg);
+  -webkit-mask:radial-gradient(ellipse,transparent 0 37%,#000 48% 59%,transparent 77%);
+  mask:radial-gradient(ellipse,transparent 0 37%,#000 48% 59%,transparent 77%);
+  animation:accretion-spin 19s linear infinite;
+  filter:drop-shadow(0 0 8px rgba(152,204,244,.55));
+}
+.blackhole-disk-rear{z-index:2;opacity:.78;}
+.blackhole-disk-front{z-index:4;opacity:.96;transform:rotate(-24deg) scale(1.06);}
+.blackhole-photon-ring{
+  position:absolute;z-index:5;inset:22%;border-radius:50%;pointer-events:none;
+  border:1px solid rgba(231,222,199,.46);
+  box-shadow:inset 0 0 7px 1px rgba(157,207,238,.17),0 0 11px 2px rgba(169,211,241,.28);
+  opacity:.58;
+}
+.blackhole-satellite{
+  position:absolute;z-index:5;width:4px;height:4px;border-radius:50%;
+  background:#d9f1ff;box-shadow:0 0 10px 2px rgba(112,199,249,.72);
+}
+.satellite-a{left:17%;top:38%;}.satellite-b{right:14%;bottom:33%;width:2px;height:2px}
+.rocket-launch-control{
+  --flight-x:0px;--flight-y:0px;
+  position:relative;z-index:3;display:flex;align-items:center;justify-content:center;flex-direction:column;
+  gap:17px;width:clamp(140px,17vw,214px);min-height:250px;padding:13px;
+  color:#f6e4c9;background:transparent;border:0;border-radius:46%;
+  cursor:pointer;filter:drop-shadow(0 9px 22px rgba(3,8,17,.5));
+  transition:filter .25s ease;touch-action:manipulation;
+}
+.rocket-launch-control:hover{filter:drop-shadow(0 0 24px rgba(115,205,255,.35))}
+.rocket-launch-control:focus-visible{outline:2px solid #f1d6a1;outline-offset:10px}
+.rocket-float{
+  position:relative;display:block;z-index:2;width:clamp(108px,12vw,156px);height:clamp(151px,16.8vw,218px);
+  transform:rotate(24deg);transform-origin:50% 55%;
+  animation:rocket-idle 5.2s ease-in-out infinite;
+}
+.rocket-ship{position:relative;z-index:2;display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 4px 14px rgba(160,208,243,.24))}
+.rocket-flame-outer,.rocket-flame-inner{position:absolute;left:50%;z-index:1;transform:translateX(-50%);border-radius:18% 18% 55% 55%}
+.rocket-flame-outer{width:25%;height:36%;top:79%;
+  background:linear-gradient(180deg,rgba(241,241,250,.96),#7bbfff 38%,rgba(52,131,252,.38) 71%,transparent 100%);
+  filter:blur(5px) drop-shadow(0 0 14px rgba(73,166,255,.88));
+  animation:rocket-flame 1s ease-in-out infinite alternate;
+}
+.rocket-flame-inner{width:12%;height:23%;top:81%;
+  background:linear-gradient(180deg,#fff8e7,#f4c984 35%,rgba(102,185,254,.45) 78%,transparent);
+  filter:blur(1px);animation:rocket-flame .67s ease-in-out infinite alternate-reverse;
+}
+.rocket-caption{
+  position:relative;z-index:4;display:block;
+  font-family:var(--serif);font-size:clamp(14px,1.08vw,17px);
+  line-height:1.6;letter-spacing:.29em;text-indent:.29em;
+  color:rgba(240,226,202,.94);text-shadow:0 0 12px rgba(20,34,55,.65),0 0 16px rgba(165,197,222,.25);
+  transition:opacity .28s ease,transform .28s ease;
+}
+.rocket-launch-control:hover .rocket-caption{transform:translateY(3px);color:#fff7e7}
+body.rocket-launching .rocket-float{
+  animation:rocket-to-blackhole var(--launch-duration,1700ms) cubic-bezier(.34,.04,.84,1) both;
+}
+body.rocket-launching .rocket-caption{opacity:0;transform:translateY(15px)}
+body.rocket-launching .rocket-flame-outer{height:65%;filter:blur(8px) drop-shadow(0 0 26px #75bfff)}
+body.rocket-launching #blackhole-gate{
+  animation:blackhole-consume var(--launch-duration,1700ms) cubic-bezier(.18,.71,.22,1) both;
+}
+body.rocket-in-warp #blackhole-gate{opacity:0;filter:blur(18px);pointer-events:none;}
+body.rocket-launching .site-header{transition:opacity .9s ease;opacity:0;pointer-events:none}
+#launch-curtain{position:fixed;z-index:2147483646;inset:0;background:radial-gradient(circle at 50% 50%,#020711,#000207 74%);
+  pointer-events:none;opacity:0;visibility:hidden;transition:opacity .68s ease,visibility 0s linear .68s}
+body.warp-navigation-pending #launch-curtain{visibility:visible;opacity:1;transition:opacity .68s ease}
+body.warp-navigation-pending .rocket-launch-control{opacity:0}
+@keyframes rocket-idle{0%,100%{transform:translate3d(0,1px,0) rotate(24deg)}50%{transform:translate3d(2px,-12px,0) rotate(27deg)}}
+@keyframes blackhole-hover{from{transform:translate(-50%,-51%) scale(.98)}to{transform:translate(-50%,-49%) scale(1.03)}}
+@keyframes accretion-spin{from{filter:drop-shadow(0 0 8px rgba(152,204,244,.55)) hue-rotate(0deg)}to{filter:drop-shadow(0 0 8px rgba(152,204,244,.55)) hue-rotate(24deg)}}
+@keyframes rocket-flame{from{opacity:.7;transform:translateX(-50%) scaleY(.86)}to{opacity:1;transform:translateX(-50%) scaleY(1.18)}}
+@keyframes rocket-to-blackhole{
+  0%{transform:translate3d(0,0,0) rotate(24deg) scale(1);opacity:1}
+  25%{transform:translate3d(-7px,14px,0) rotate(18deg) scale(1.11);opacity:1}
+  75%{opacity:1}
+  100%{transform:translate3d(var(--flight-x),var(--flight-y),0) rotate(35deg) scale(.04);opacity:0}
+}
+@keyframes blackhole-consume{
+  0%{transform:translate(-50%,-50%) scale(1)}
+  57%{transform:translate(-50%,-50%) scale(1.10)}
+  100%{transform:translate(-50%,-50%) scale(1.55);filter:drop-shadow(0 0 50px rgba(132,207,255,.44))}
+}
+@media(max-width:700px){
+  #blackhole-gate{left:72%;top:29%;width:clamp(120px,35vw,170px)}
+  .rocket-launch-control{width:153px;min-height:236px;padding:10px}
+  .rocket-float{width:116px;height:164px}
+  .rocket-caption{font-size:14px}
+}
+@media(prefers-reduced-motion:reduce){
+  .rocket-float:not(body.rocket-launching .rocket-float),
+  .blackhole-gate:not(body.rocket-launching .blackhole-gate),
+  .rocket-flame-outer,.rocket-flame-inner{animation:none}
+  body.rocket-launching .rocket-float{animation-duration:.14s}
+  body.rocket-launching #blackhole-gate{animation-duration:.14s}
+  #launch-curtain{transition-duration:.14s}
+}

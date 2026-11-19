@@ -647,6 +647,9 @@
       uniform vec2  uRipple2; // (progress 0..1, strength)
       uniform vec3  uAccentColor;
       uniform float uTime;
+      uniform vec2 uHoleCenter;
+      uniform float uHoleRadius;
+      uniform float uHoleOpacity;
 
       varying vec2 vUv;
 
@@ -733,6 +736,15 @@
 
         vec2 sampleUv = baseUv + refractUv;
 
+        // Gravitational lensing: bend light from the V5 starfield around a localized event horizon.
+        vec2 h = (vUv - uHoleCenter) * vec2(uAspect, 1.0);
+        float hd = length(h);
+        float hr = max(uHoleRadius, 0.001);
+        float lensBand = exp(-pow((hd - hr * 1.15) / (hr * 0.47), 2.0));
+        vec2 hdir = hd > 0.00001 ? h / hd : vec2(0.0);
+        sampleUv += vec2(hdir.x / max(uAspect, 0.001), hdir.y)
+                  * hr * 0.20 * lensBand * uHoleOpacity;
+
         // 3) Radial RGB Chromatic Aberration STRICTLY proportional to warp & ripples (0.0 when idle!)
         float edgeMask = smoothstep(0.28, 0.98, dist);
         vec2 warpChroma = radialUvDir * (edgeMask * edgeMask * 0.0038 * uWarp);
@@ -745,7 +757,8 @@
           sceneCol.b = texture2D(tScene, clamp(sampleUv - totalChroma, 0.001, 0.999)).b;
         } else {
           // Exact 1:1 pixel tap when idle -> 100% razor-sharp astrophotography
-          sceneCol = texture2D(tScene, vUv).rgb;
+          sceneCol = texture2D(tScene, (uHoleOpacity > 0.001 && hd < hr * 3.0)
+            ? clamp(sampleUv, 0.001, 0.999) : vUv).rgb;
         }
 
         // Preserve rich jewel tones when multiple bright streams overlap
@@ -772,7 +785,16 @@
         float dither = (hash12(gl_FragCoord.xy + fract(uTime * 1.618) * 257.0) - 0.5) / 255.0 * 1.6;
         mapped = clamp(mapped + dither, 0.0, 1.0);
 
-        gl_FragColor = vec4(mapped, 1.0);
+        // Physical silhouette, photon ring and warm/cool Doppler-inspired accretion glow.
+        float horizon = 1.0 - smoothstep(hr * .73, hr * .91, hd);
+        float photon = exp(-pow((hd - hr * 1.035) / (hr * .105), 2.0));
+        float disk = exp(-pow((hd - hr * 1.30) / (hr * .18), 2.0));
+        float angle = atan(h.y, h.x);
+        vec3 photonColor = mix(vec3(.42,.72,1.0), vec3(1.0,.75,.45), smoothstep(-.8,1.3,sin(angle+1.2)));
+        mapped *= 1.0 - horizon * .995 * uHoleOpacity;
+        mapped += (photonColor * photon * .23 + vec3(.16,.38,.64) * disk * .08)
+               * uHoleOpacity;
+        gl_FragColor = vec4(clamp(mapped, 0.0, 1.0), 1.0);
       }
     `;
 
@@ -822,6 +844,8 @@
     function showError(msg) {
       window.__COSMOS_ERROR__ = msg || 'WebGL initialization failed';
       document.body.classList.add('cosmos-fallback');
+      const fallbackGate = document.getElementById('warp-trigger-btn');
+      if (fallbackGate) fallbackGate.addEventListener('click', () => window.location.assign('/PhotoGallery/galaxy/'), { once: true });
       console.error('[Cosmos Home] WebGL initialization failed:', window.__COSMOS_ERROR__);
     }
 
@@ -1199,6 +1223,9 @@
         uRipple2: { value: new THREE.Vector2(0, 0) },
         uAccentColor: { value: liveColors.veilB },
         uTime: { value: 0 },
+        uHoleCenter: { value: new THREE.Vector2(.65, .58) },
+        uHoleRadius: { value: .065 },
+        uHoleOpacity: { value: 0 },
       };
 
       const compositeMat = new THREE.ShaderMaterial({
@@ -1304,6 +1331,10 @@
       const elPillDot = document.getElementById('pill-dot');
       const elPillLabel = document.getElementById('pill-label');
       const elProgressBar = document.getElementById('warp-progress-bar');
+      const elBlackHole = document.getElementById('blackhole-gate');
+      const elRocket = document.querySelector('.rocket-float');
+      let launchStart = 0;
+      const launchDurationMs = testMode ? 170 : 1700;
 
       const elHideUiBtn = document.getElementById('hide-ui-btn');
       const elRestoreUiBtn = document.getElementById('restore-ui-btn');
@@ -1393,7 +1424,23 @@
         window.__COSMOS_WARP_STARTED__ = true;
         elWarpBtn.disabled = true;
         elWarpBtn.setAttribute('aria-busy', 'true');
-        beginWarp('AUTO');
+
+        // A curved rocket approach is staged before the V5 star-warp tunnel.
+        const rocketRect = elRocket.getBoundingClientRect();
+        const holeRect = elBlackHole.getBoundingClientRect();
+        const rocketCx = rocketRect.left + rocketRect.width * .5;
+        const rocketCy = rocketRect.top + rocketRect.height * .48;
+        const holeCx = holeRect.left + holeRect.width * .5;
+        const holeCy = holeRect.top + holeRect.height * .5;
+        elWarpBtn.style.setProperty('--flight-x', (holeCx - rocketCx) + 'px');
+        elWarpBtn.style.setProperty('--flight-y', (holeCy - rocketCy) + 'px');
+        document.body.style.setProperty('--launch-duration', launchDurationMs + 'ms');
+        launchStart = performance.now();
+        document.body.classList.add('rocket-launching');
+        window.setTimeout(() => {
+          document.body.classList.add('rocket-in-warp');
+          beginWarp('AUTO');
+        }, launchDurationMs);
       });
 
       function toggleUi() {
@@ -1698,7 +1745,14 @@
             if (redirectAfterWarp) {
               redirectAfterWarp = false;
               document.body.classList.add('warp-navigation-pending');
-              window.setTimeout(() => window.location.assign('/PhotoGallery/galaxy/'), 240);
+              window.setTimeout(() => {
+                try {
+                  sessionStorage.setItem('cosmos-to-galaxy-v2', JSON.stringify({
+                    version: 2, origin: location.origin, time: Date.now()
+                  }));
+                } catch (error) { /* Storage may be unavailable; direct navigation still works. */ }
+                window.location.assign('/PhotoGallery/galaxy/');
+              }, testMode ? 100 : 780);
             }
           }
         }
@@ -1817,6 +1871,19 @@
         compositeUniforms.uRipple1.value.set(ripples[0].progress, ripples[0].strength);
         compositeUniforms.uRipple2.value.set(ripples[1].progress, ripples[1].strength);
         compositeUniforms.uTime.value = elapsed;
+        // Screen-space refraction tracks the actual DOM gate in any viewport.
+        const holeBox = elBlackHole.getBoundingClientRect();
+        const holeVisible = holeBox.top < innerHeight && holeBox.bottom > 0;
+        const approach = launchStart ? smoothQuint(clamp01((now - launchStart) / launchDurationMs)) : 0;
+        const warpFade = warp.stage !== 'IDLE'
+          ? 1 - smoothQuint(clamp01(warp.totalAutoTime / (STAGE_DUR.CHARGE + .4 * STAGE_DUR.BREAKTHROUGH)))
+          : 1;
+        compositeUniforms.uHoleCenter.value.set(
+          (holeBox.left + holeBox.width * .5) / Math.max(innerWidth, 1),
+          1 - (holeBox.top + holeBox.height * .5) / Math.max(innerHeight, 1)
+        );
+        compositeUniforms.uHoleRadius.value = holeBox.width * (.25 + approach * .13) / Math.max(innerHeight, 1);
+        compositeUniforms.uHoleOpacity.value = holeVisible ? warpFade : 0;
 
         // 7) Execute Multi-Pass Crisp-Preserving HDR Post-Processing Pipeline
         // Pass 1: Render Backdrop + 3 Dynamic Capsule Star Layers -> rtScene

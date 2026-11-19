@@ -24,6 +24,7 @@
 <body>
   <canvas id="cosmos-canvas" aria-hidden="true"></canvas>
   <div id="cosmos-vignette" aria-hidden="true"></div>
+  <div id="launch-curtain" aria-hidden="true"></div>
 
   <a class="skip-link" href="#projects">跳转到项目集</a>
 
@@ -50,10 +51,54 @@
   <main id="top">
     <section class="hero" aria-label="星海漫游入口">
       <div class="hero-portal-stage">
-        <button id="warp-trigger-btn" type="button" class="warp-pill" aria-label="星海漫游" aria-busy="false">
-          <span id="pill-dot" class="dot-breathe" aria-hidden="true"></span>
-          <span id="pill-label">星海漫游</span>
-          <span id="warp-progress-bar" aria-hidden="true"></span>
+        <div id="blackhole-gate" class="blackhole-gate" aria-hidden="true">
+          <div class="blackhole-skywarp"></div>
+          <div class="blackhole-disk blackhole-disk-rear"></div>
+          <div class="blackhole-shadow"></div>
+          <div class="blackhole-disk blackhole-disk-front"></div>
+          <div class="blackhole-photon-ring"></div>
+          <div class="blackhole-satellite satellite-a"></div>
+          <div class="blackhole-satellite satellite-b"></div>
+        </div>
+        <button id="warp-trigger-btn" type="button" class="rocket-launch-control" aria-label="星海漫游" aria-busy="false" title="驾驶小火箭，穿过黑洞进入星海">
+          <span class="rocket-float" aria-hidden="true">
+            <span class="rocket-flame-outer"></span>
+            <span class="rocket-flame-inner"></span>
+            <svg class="rocket-ship" viewBox="0 0 152 214" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="rocket-hull" x1="0" y1="0" x2="1" y2="1">
+                  <stop stop-color="#fff7e7"/><stop offset=".44" stop-color="#cbddea"/>
+                  <stop offset="1" stop-color="#678ea7"/>
+                </linearGradient>
+                <linearGradient id="rocket-fin" x1="0" y1="0" x2="1" y2="1">
+                  <stop stop-color="#f5cf8c"/><stop offset="1" stop-color="#bd774f"/>
+                </linearGradient>
+                <radialGradient id="rocket-window" cx=".33" cy=".26" r=".72">
+                  <stop stop-color="#c7f4ff"/><stop offset=".43" stop-color="#4c9dcc"/>
+                  <stop offset="1" stop-color="#0a345e"/>
+                </radialGradient>
+                <linearGradient id="rocket-nose" x1="0" y1="0" x2=".8" y2="1">
+                  <stop stop-color="#f5dbaa"/><stop offset="1" stop-color="#b9825e"/>
+                </linearGradient>
+              </defs>
+              <ellipse cx="76" cy="182" rx="22" ry="12" fill="#08182e" opacity=".32"/>
+              <path d="M56 128Q28 123 22 165L53 158L66 146Z" fill="url(#rocket-fin)" stroke="#f3d8aa" stroke-width="2"/>
+              <path d="M96 128Q124 123 130 165L99 158L86 146Z" fill="url(#rocket-fin)" stroke="#f3d8aa" stroke-width="2"/>
+              <path d="M58 140Q54 160 59 178L93 178Q98 160 94 140Z" fill="#d7e3e9" stroke="#7d9aae" stroke-width="2"/>
+              <rect x="66" y="168" width="20" height="17" rx="6" fill="#b8cad3" stroke="#4e728a" stroke-width="2"/>
+              <path d="M76 16Q115 43 110 114L99 163Q76 177 53 163L42 114Q37 43 76 16Z" fill="url(#rocket-hull)" stroke="#e9f4fa" stroke-width="2"/>
+              <path d="M76 16Q94 29 104 59Q76 54 48 59Q58 29 76 16Z" fill="url(#rocket-nose)"/>
+              <path d="M46 121Q76 137 106 121" fill="none" stroke="#719ab2" stroke-width="3" opacity=".6"/>
+              <circle cx="76" cy="96" r="27" fill="#acc6d7" stroke="#f8e1b6" stroke-width="6"/>
+              <circle cx="76" cy="96" r="20" fill="url(#rocket-window)" stroke="#397093" stroke-width="3"/>
+              <ellipse cx="69" cy="87" rx="8" ry="5" transform="rotate(-28 69 87)" fill="#f2ffff" opacity=".77"/>
+              <path d="M56 142Q76 153 96 142" stroke="#e8bc81" stroke-width="4" fill="none"/>
+              <circle cx="59" cy="160" r="2" fill="#faf8e9"/><circle cx="93" cy="160" r="2" fill="#faf8e9"/>
+            </svg>
+          </span>
+          <span class="rocket-caption" id="pill-label">星海漫游</span>
+          <span id="pill-dot" hidden></span>
+          <span id="warp-progress-bar" hidden></span>
         </button>
       </div>
     </section>

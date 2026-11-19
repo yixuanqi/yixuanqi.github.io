@@ -8,7 +8,7 @@
 
 ## Homepage composition
 
-- The hero contains exactly one visible primary control: a large, centered, floating glass pill labeled **星海漫游**.
+- The hero contains one centrally floating **small rocket** with a discreet **星海漫游** label. A visually separate black hole with an event horizon, a photon ring and animated accretion disk is positioned ahead of it.
 - Remove marketing headlines, explanatory paragraphs, archive labels, secondary hero actions, duplicate portal buttons, and decorative copy from the hero.
 - The existing site brand and project/about navigation may remain in the header.
 - The CTA is the visual focus; the starfield remains visible behind it.
@@ -23,7 +23,7 @@
 
 ## Warp interaction baseline
 
-The visible **星海漫游** button is the only warp trigger on the homepage.
+The floating rocket (`#warp-trigger-btn`) is the only trigger. Clicking first launches the rocket toward the black-hole center (1.7 seconds), then the V5 four-stage warp begins. The black-hole's screen-space GLSL refraction is composited over the existing V5 stars.
 
 | Stage | Duration | Effect |
 |---|---:|---|
@@ -32,9 +32,9 @@ The visible **星海漫游** button is the only warp trigger on the homepage.
 | CRUISE | 4.6 s | Three-layer star streaks and translucent spacetime veil |
 | DECEL | 3.1 s | Head deceleration, tail collapse, exit ripple, FOV settle |
 
-Total automatic transition: **10.5 seconds**.
+Production transition: **1.7 seconds of rocket approach + 10.5 seconds of V5 warp + 0.78 seconds of blackout/handoff**. The test harness may accelerate these timings.
 
-After the transition, navigate in the **same tab** to `/PhotoGallery/galaxy/` using `window.location.assign`. Never use `target="_blank"`, `window.open`, or an intermediate popup for this CTA.
+Before same-tab navigation to `/PhotoGallery/galaxy/`, cover the full screen in black and store a one-time `sessionStorage` token (`cosmos-to-galaxy-v2`). The destination consumes the token and unveils its first rendered scene through a radial black-hole exit; direct visits must not show the arrival mask. Never use `target="_blank"`, `window.open`, or an intermediate popup for this CTA.
 
 ## Regression rules
 
