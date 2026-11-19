@@ -270,7 +270,7 @@
         phase: Math.random() * Math.PI * 2,
         drift: Math.random() * .09 + .015
       }));
-      draw(0);
+      if (reduceMotion) draw(0);
     }
 
     function draw(time) {
@@ -286,7 +286,11 @@
         context.fillStyle = "rgba(225, 224, 210," + Math.max(.08, star.alpha * twinkle) + ")";
         context.fill();
       }
-      if (!reduceMotion) frame = window.requestAnimationFrame(draw);
+    }
+
+    function animate(time) {
+      draw(time);
+      frame = window.requestAnimationFrame(animate);
     }
 
     window.addEventListener("resize", resize, { passive: true });
@@ -295,7 +299,7 @@
       pointer.ty = (event.clientY / Math.max(height, 1) - .5) * 2;
     }, { passive: true });
     resize();
-    if (!reduceMotion) frame = window.requestAnimationFrame(draw);
+    if (!reduceMotion) frame = window.requestAnimationFrame(animate);
     window.addEventListener("pagehide", () => window.cancelAnimationFrame(frame), { once: true });
   }
 
