@@ -51,7 +51,7 @@ body.cosmos-fallback #cosmos-canvas{display:none}
   transform:rotate(-25deg) scaleY(.76);filter:blur(11px);
 }
 .blackhole-shadow{
-  position:absolute;z-index:3;inset:25%;border-radius:50%;
+  position:absolute;z-index:6;inset:25%;border-radius:50%;
   background:radial-gradient(circle at 52% 51%,#000103 0 66%,#02070e 77%,#0b1b28 86%,rgba(25,65,94,.48) 95%,transparent 100%);
   box-shadow:0 0 18px 3px rgba(5,19,36,.8),0 0 0 1px rgba(196,224,247,.48),0 0 16px 7px rgba(124,191,236,.12);
 }
@@ -67,15 +67,15 @@ body.cosmos-fallback #cosmos-canvas{display:none}
   filter:drop-shadow(0 0 8px rgba(152,204,244,.55));
 }
 .blackhole-disk-rear{z-index:2;opacity:.78;}
-.blackhole-disk-front{z-index:4;opacity:.96;transform:rotate(-24deg) scale(1.06);}
+.blackhole-disk-front{z-index:4;opacity:.75;transform:rotate(-24deg) scale(1.06);}
 .blackhole-photon-ring{
-  position:absolute;z-index:5;inset:22%;border-radius:50%;pointer-events:none;
+  position:absolute;z-index:7;inset:22%;border-radius:50%;pointer-events:none;
   border:1px solid rgba(231,222,199,.46);
   box-shadow:inset 0 0 7px 1px rgba(157,207,238,.17),0 0 11px 2px rgba(169,211,241,.28);
   opacity:.58;
 }
 .blackhole-satellite{
-  position:absolute;z-index:5;width:4px;height:4px;border-radius:50%;
+  position:absolute;z-index:8;width:4px;height:4px;border-radius:50%;
   background:#d9f1ff;box-shadow:0 0 10px 2px rgba(112,199,249,.72);
 }
 .satellite-a{left:17%;top:38%;}.satellite-b{right:14%;bottom:33%;width:2px;height:2px}

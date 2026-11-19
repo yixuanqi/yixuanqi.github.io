@@ -57,6 +57,10 @@ try {
     const status=await page.evaluate(()=>({ready:window.__COSMOS_READY__===true,error:window.__COSMOS_ERROR__||""}));
     assert.equal(status.ready,true,viewport.name+" V5 WebGL engine failed: "+status.error);
     assert.equal(await page.locator("#warp-trigger-btn").count(),1,"Exactly one portal CTA");
+    assert.equal(await page.locator("#blackhole-gate").count(),1,"One gravitational-lensing black hole must exist");
+    assert.equal(await page.locator(".rocket-float .rocket-ship").count(),1,"The floating rocket must be rendered as an SVG ship");
+    assert.equal(await page.locator(".rocket-flame-outer").count(),1,"The rocket must have a visible engine flame");
+    assert.equal(await page.locator(".warp-pill").count(),0,"The old capsule CTA must not return");
     assert.equal((await page.locator("#warp-trigger-btn").innerText()).trim(),"星海漫游","CTA label stays minimal");
     assert.equal(await page.locator(".hero-copy,.eyebrow,.hero-description,.hero-footnote,.hero-bottom-mark,.hero-actions").count(),0,"Hero copy and secondary actions must be removed");
     assert.equal(await page.locator(".header-portal").count(),0,"Duplicate header portal must be absent");
@@ -99,10 +103,15 @@ try {
   assert.equal(warpEngineStatus.ready,true,"Fast warp test WebGL engine failed: "+warpEngineStatus.error);
   await warpPage.locator("#warp-trigger-btn").click({force:true});
   await warpPage.waitForFunction(()=>window.__COSMOS_WARP_STARTED__===true,null,{timeout:2000});
+  assert.equal(await warpPage.evaluate(()=>document.body.classList.contains("rocket-launching")),true,"Rocket approach must start before warp");
+  await warpPage.waitForFunction(()=>document.body.classList.contains("rocket-in-warp"),null,{timeout:6000});
   await warpPage.waitForURL(url=>new URL(url).pathname===galaxyPath,{timeout:20000});
   assert.equal(new URL(warpPage.url()).origin,origin,"Warp navigation stays in the same tab and origin");
   assert.equal(warpPopups.length,0,"Warp must not open a new tab");
   assert.equal(await warpPage.locator("#galaxy-test-destination").count(),1,"V5 warp reaches the galaxy route");
+  const handoff = JSON.parse(await warpPage.evaluate(()=>sessionStorage.getItem("cosmos-to-galaxy-v2")) || "null");
+  assert.equal(handoff?.version,2,"Same-tab galaxy arrival handshake must be present");
+  assert.equal(handoff?.origin,origin,"Arrival handshake must be scoped to the source origin");
   assert.deepEqual(warpErrors,[],"Warp page must not throw browser errors");
   await warpPage.close();
   console.log("PASS: V5 WebGL scene, minimal CTA, same-tab warp navigation, and catalog regression.");
