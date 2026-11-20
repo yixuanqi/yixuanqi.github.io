@@ -30,12 +30,14 @@ The production choreography follows the reference's five asymmetric stages:
 | `CRUISE` | 4.50 s | Three star layers stretch into luminous streams with a translucent spacetime veil |
 | `ARRIVE_RETURN` | 2.85 s | Star deceleration, exit ripple and 3D portal return |
 
-Total scene choreography: 11.50 seconds, followed by a 0.78-second blackout/handoff.
+Total scene choreography: 11.50 seconds. The outgoing portal veil lasts 2.8 seconds (250 ms for reduced motion); the same-tab navigation begins 780 ms after the veil starts (180 ms for reduced motion), so the destination resumes the *same* transition instead of restarting a separate effect.
 
 - The only launch gesture is clicking/tapping the 3D rocket (Space remains an accessible keyboard shortcut).
 - At launch, fade the outer portal header. Keep the user in the same tab throughout.
-- At completion, set a one-time `sessionStorage` token `cosmos-to-galaxy-v2` with `version: 2`, the current origin and a millisecond `time`, then navigate the top-level window to `/PhotoGallery/galaxy/`.
-- The Galaxy page consumes the token and performs its existing radial black-hole exit reveal. Direct visits must not show the arrival mask.
+- At completion, project the *actual 3D portal anchor* through the current camera into normalized screen coordinates. Clamp both coordinates into the [0.08, 0.92] viewport range.
+- Set the one-time `sessionStorage` token `cosmos-to-galaxy-v3`, containing `version: 3`, the current `origin`, millisecond `startedAt`, `durationMs: 2800` (or 250 for reduced motion), and normalized `portal: { x, y }`. Remove the previous v2 token and navigate the **top-level** window to `/PhotoGallery/galaxy/`.
+- The outgoing `#handoff-curtain` and the Galaxy destination's `#cosmos-arrival-curtain` use the same `--cosmos-portal-x`/`--cosmos-portal-y` coordinates, start time and duration. The destination advances its animation by elapsed time, avoiding a fresh or misplaced portal flash.
+- The Galaxy page consumes and removes the v3 token; it still accepts v2 as a backward-compatible fallback. Direct visits must not show the arrival mask.
 - Never use `target="_blank"`, `window.open`, or an intermediate popup for this CTA.
 - The smoke harness may set `window.__ROCKET_WARP_TEST_MODE__` to lower render load and scale every time-based stage threshold consistently. Production stage timings must remain unchanged.
 
@@ -44,7 +46,7 @@ Total scene choreography: 11.50 seconds, followed by a 0.78-second blackout/hand
 - Keep exactly one `#rocket-warp-frame` in the portal and one `#cosmos-canvas` inside that frame.
 - Keep exactly one visible hero label, `星海漫游`; no extra hero paragraphs, marketing copy, phase badge or settings panel.
 - Confirm the rocket is a real 3D mesh and the black hole is shader-rendered; do not reintroduce SVG rocket artwork or CSS accretion-disk approximations.
-- Validate desktop/mobile WebGL initialization, iframe sizing, no horizontal overflow, the actual rocket raycast, the five-stage transition, same-tab navigation and the Galaxy arrival token.
+- Validate desktop/mobile WebGL initialization, iframe sizing, no horizontal overflow, the actual rocket raycast, five-stage transition, same-tab navigation and all v3 payload fields. Also validate the published Galaxy route accepts v3 with projected coordinates and synchronized timing.
 - Preserve catalog loading, search and category filtering.
 
 ## Full-screen launch coverage

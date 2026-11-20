@@ -16,7 +16,7 @@
 - 视觉基线：`references/rocket-blackhole-warp-3d-q.html`（用户提供的 3D Q 版火箭/黑洞跃迁 HTML）。
 - 集成页面：`assets/rocket-warp.html`，通过首页的同源 iframe 嵌入，隔离 3D 画布与项目列表的指针事件。
 - 场景使用 Three.js + GLSL：程序化 3D 火箭、引力透镜黑洞、吸积盘、连续星流、HDR bloom 与五阶段跃迁。
-- 完成后由 iframe 驱动顶层窗口在当前标签页进入 `/PhotoGallery/galaxy/`，并通过一次性 sessionStorage 握手触发星海抵达动画。
+- 完成后将真实 3D 传送门的屏幕投影坐标、开始时间和持续时长写入一次性 `cosmos-to-galaxy-v3` 握手，随后在同一标签页进入 `/PhotoGallery/galaxy/`。目标页面按同一个坐标和时钟继续展开光环，避免衔接时重新闪现或错位。
 - 门户只保留一个可见入口文字：`星海漫游`；调试 HUD 不对访客显示。
 
 ## 本地预览
@@ -40,6 +40,6 @@ python -m http.server 8080
 
 ## 部署
 
-GitHub Pages 已采用 Git 分支发布模式：由 GitHub 内置的 `pages build and deployment` 工作流统一部署 `main`。自定义 `Validate personal project portal` 工作流只做 HTML/JS 契约检查、桌面/移动端 WebGL 冒烟、真实 3D 火箭射线拾取、五阶段跃迁和同 Tab 导航验收，并保存浏览器截图。不再使用第二套 `deploy-pages`，避免并发部署冲突。
+GitHub Pages 已采用 Git 分支发布模式：由 GitHub 内置的 `pages build and deployment` 工作流统一部署 `main`。自定义 `Validate personal project portal` 工作流只做 HTML/JS 契约检查、桌面/移动端 WebGL 冒烟、真实 3D 火箭射线拾取、五阶段跃迁、同 Tab 导航以及真实 Galaxy v3 入场协议兼容性验收，并保存浏览器截图。不再使用第二套 `deploy-pages`，避免并发部署冲突。
 
 固定门户地址：`https://yixuanqi.github.io/`

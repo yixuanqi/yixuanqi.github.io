@@ -31,6 +31,8 @@ assert.match(scene, /state\.stage === 'HANDOFF'[\s\S]*portalMesh\.visible = true
 assert.match(scene, /window\.__ROCKET_WARP_READY__\s*=\s*true/, "scene must expose a ready marker for browser tests");
 assert.match(scene, /window\.__ROCKET_WARP_DEBUG__/, "scene must expose the rocket raycast point for deterministic browser tests");
 assert.match(baseline, /rocket-blackhole-warp-3d-q\.html/, "the uploaded HTML must be the primary visual baseline");
+assert.match(baseline, /cosmos-to-galaxy-v3/, "the documented handoff protocol must be v3");
+assert.doesNotMatch(baseline, /set a one-time `sessionStorage` token `cosmos-to-galaxy-v2`/, "the v2 handoff must no longer be documented as the production path");
 await access(resolve(root, "references/rocket-blackhole-warp-3d-q.html"));
 
 assert.match(app, /https:\/\/yixuanqi\.github\.io\/PhotoGallery\/projects\.json/, "portal must consume the canonical PhotoGallery catalog");
@@ -62,6 +64,21 @@ if (process.env.SKIP_REMOTE_CATALOG !== "1") {
     assert.equal(new URL(project.repositoryUrl).protocol, "https:", project.id + " repositoryUrl must use HTTPS");
   }
   console.log("Remote project catalog: " + catalog.projects.length + " entries validated.");
+
+  // Cross-repository integration contract: the published destination must
+  // consume the same v3 transition as the live portal, not only a mocked route.
+  const galaxyUrl = "https://yixuanqi.github.io/PhotoGallery/galaxy/";
+  const galaxyResponse = await fetch(galaxyUrl, { headers: { accept: "text/html" } });
+  assert.equal(galaxyResponse.status, 200, "published Galaxy destination must be reachable");
+  const galaxy = await galaxyResponse.text();
+  assert.match(galaxy, /cosmos-to-galaxy-v3/, "published Galaxy must consume the v3 handoff");
+  assert.match(galaxy, /payload\.startedAt/, "published Galaxy must preserve the shared source clock");
+  assert.match(galaxy, /payload\.durationMs/, "published Galaxy must preserve the shared transition duration");
+  assert.match(galaxy, /portal\.x/, "published Galaxy must reuse the projected 3D portal X");
+  assert.match(galaxy, /portal\.y/, "published Galaxy must reuse the projected 3D portal Y");
+  assert.match(galaxy, /sessionStorage\.removeItem\(keyV3\)/, "arrival token must be consumed exactly once");
+  assert.match(galaxy, /cosmos-arrival-ready/, "published Galaxy must implement the arrival reveal");
+  console.log("Published Galaxy v3 arrival protocol validated.");
 } else {
   console.log("Remote catalog check skipped by SKIP_REMOTE_CATALOG=1.");
 }
